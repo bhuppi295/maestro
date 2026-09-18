@@ -1,0 +1,10 @@
+src/**
+webview-ui/src/**
+webview-ui/node_modules/**
+node_modules/**
+.vscode/**
+tsconfig.json
+esbuild.config.js
+**/*.map
+**/*.ts
+!webview-ui/dist/**

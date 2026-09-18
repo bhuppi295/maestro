@@ -1,0 +1,63 @@
+{
+  "name": "maestro",
+  "displayName": "Maestro",
+  "description": "AI-powered developer workflow tool — Jira for AI Agents",
+  "version": "0.0.1",
+  "publisher": "YOUR_VSCODE_PUBLISHER_ID",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/maestro"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "maestro-sidebar",
+          "title": "Maestro",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "maestro-sidebar": [
+        {
+          "type": "webview",
+          "id": "maestro.mainView",
+          "name": "Maestro"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "maestro.openPanel",
+        "title": "Maestro: Open Panel"
+      }
+    ]
+  },
+  "scripts": {
+    "build:ext": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --platform=node --format=cjs --sourcemap",
+    "build:ui": "cd webview-ui && npm run build",
+    "build": "npm run build:ext && npm run build:ui",
+    "watch:ext": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --platform=node --format=cjs --sourcemap --watch",
+    "watch:ui": "cd webview-ui && npm run dev",
+    "vscode:prepublish": "npm run build",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.24.0"
+  },
+  "dependencies": {
+    "simple-git": "^3.22.0"
+  }
+}
