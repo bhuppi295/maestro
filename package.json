@@ -3,11 +3,11 @@
   "displayName": "Maestro",
   "description": "AI-powered developer workflow tool — Jira for AI Agents",
   "version": "0.0.1",
-  "publisher": "YOUR_VSCODE_PUBLISHER_ID",
+  "publisher": "bhuppi295",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_GITHUB_USERNAME/maestro"
+    "url": "https://github.com/bhuppi295/maestro"
   },
   "engines": {
     "vscode": "^1.80.0"

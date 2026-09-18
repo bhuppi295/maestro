@@ -2,6 +2,18 @@
 
 AI-powered developer workflow tool for VS Code — Jira for AI Agents.
 
+## Installation
+
+This extension is not published on the VS Code Marketplace. Download the
+latest `.vsix` from the [Releases page](https://github.com/bhuppi295/maestro/releases),
+then install it:
+
+```bash
+code --install-extension maestro-x.y.z.vsix
+```
+
+Or in VS Code: Extensions view → `...` menu → **Install from VSIX...**
+
 ## Development
 
 ```bash
@@ -28,8 +40,3 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 MIT — see [LICENSE](LICENSE).
 
----
-
-**Note for maintainers:** before publishing, replace `YOUR_GITHUB_USERNAME` and
-`YOUR_VSCODE_PUBLISHER_ID` in `package.json` with real values. The publisher id
-is only needed if you plan to list this on the [VS Code Marketplace](https://marketplace.visualstudio.com/manage).

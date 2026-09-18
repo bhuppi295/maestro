@@ -3,6 +3,8 @@ webview-ui/src/**
 webview-ui/node_modules/**
 node_modules/**
 .vscode/**
+.maestro/**
+.gitignore
 tsconfig.json
 esbuild.config.js
 **/*.map
