@@ -45,6 +45,7 @@
     "build:ext": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --platform=node --format=cjs --sourcemap",
     "build:ui": "cd webview-ui && npm run build",
     "build": "npm run build:ext && npm run build:ui",
+    "test": "esbuild src/services/analyze.service.test.ts --bundle --platform=node --format=cjs --outfile=out/analyze.service.test.js && node --test out/analyze.service.test.js",
     "watch:ext": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --platform=node --format=cjs --sourcemap --watch",
     "watch:ui": "cd webview-ui && npm run dev",
     "vscode:prepublish": "npm run build",
