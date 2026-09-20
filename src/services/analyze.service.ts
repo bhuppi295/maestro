@@ -54,19 +54,50 @@ export class AnalyzeService {
    * Per-tool error detection — each tool has different output format.
    */
   private _hasErrors(command: string, output: string): boolean {
-    if (command.includes('flutter analyze') || command.includes('dart analyze')) {
-      return output.includes('error •') || output.includes('No issues found') === false && output.includes('error');
-    }
-    if (command.includes('tsc')) {
-      return output.includes('error TS');
-    }
-    if (command.includes('eslint')) {
-      return output.includes(' error ') || /\d+ error/.test(output);
-    }
-    if (command.includes('ruff') || command.includes('pylint')) {
-      return output.length > 0 && !output.includes('All checks passed');
-    }
-    // Generic: non-empty output = possible errors
-    return output.toLowerCase().includes('error');
+    return hasAnalyzeErrors(command, output);
   }
+}
+
+/**
+ * Per-tool error detection. Exported for unit tests.
+ *
+ * Flutter/Dart used to be:
+ *   output.includes('error •') || output.includes('No issues found') === false && output.includes('error')
+ * Because `&&` binds tighter than `||`, any output containing the substring
+ * "error" (e.g. `lib/error_handler.dart`) failed when "No issues found" was
+ * absent. Match analyzer diagnostic lines or a numeric error summary instead.
+ */
+export function hasAnalyzeErrors(command: string, output: string): boolean {
+  if (command.includes('flutter analyze') || command.includes('dart analyze')) {
+    return hasFlutterDartAnalyzerErrors(output);
+  }
+  if (command.includes('tsc')) {
+    return output.includes('error TS');
+  }
+  if (command.includes('eslint')) {
+    return output.includes(' error ') || /\d+ error/.test(output);
+  }
+  if (command.includes('ruff') || command.includes('pylint')) {
+    return output.length > 0 && !output.includes('All checks passed');
+  }
+  // Generic: non-empty output = possible errors
+  return output.toLowerCase().includes('error');
+}
+
+/**
+ * dart/flutter analyze lines look like:
+ *   `  error • Undefined name 'foo' • lib/main.dart:10:3 • undefined_identifier`
+ * Older dart analyzer used `error -`. Summaries look like:
+ *   `2 issues found. (1 error, 1 warning).`
+ */
+function hasFlutterDartAnalyzerErrors(output: string): boolean {
+  const hasDiagnosticError = output
+    .split(/\r?\n/)
+    .some((line) => /^\s*error\s*[•-]/.test(line));
+  if (hasDiagnosticError) {
+    return true;
+  }
+
+  const summary = /\((\d+)\s+errors?\b/i.exec(output);
+  return Boolean(summary && Number(summary[1]) > 0);
 }
