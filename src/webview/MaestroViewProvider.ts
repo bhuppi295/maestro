@@ -12,8 +12,6 @@ import { PlannerAI } from '../core/planner';
 import { ImplementerAI } from '../core/implementer';
 import { ReviewerAI } from '../core/reviewer';
 
-const MAX_ATTEMPTS = 3;
-
 export class MaestroViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _ticketStore: TicketStore;
@@ -139,7 +137,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       this._refreshTickets();
 
       if (isRetry) {
-        this._log(ticket.id, `🔄 Retry ${attempt}/${MAX_ATTEMPTS} — applying reviewer feedback...`);
+        this._log(ticket.id, `🔄 Retry ${attempt}/${settings.maxRetries} — applying reviewer feedback...`);
       } else {
         this._log(ticket.id, '⚡ OpenCode is implementing...');
       }
@@ -210,10 +208,10 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       this._refreshTickets();
       this._log(
         ticket.id,
-        `❌ Reviewer rejected (attempt ${attempt}/${MAX_ATTEMPTS}): ${review.feedback.slice(0, 120)}`
+        `❌ Reviewer rejected (attempt ${attempt}/${settings.maxRetries}): ${review.feedback.slice(0, 120)}`
       );
 
-      if (attempt >= MAX_ATTEMPTS) {
+      if (attempt >= settings.maxRetries) {
         // Escalate to user after max retries
         this._ticketStore.updateStatus(ticket.id, 'failed');
         this._refreshTickets();
@@ -222,7 +220,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
           `⚠️ Max attempts reached. Please review manually or click "Handle Manually".`
         );
         vscode.window.showWarningMessage(
-          `Maestro: "${ticket.title}" failed after ${MAX_ATTEMPTS} attempts. Manual review needed.`
+          `Maestro: "${ticket.title}" failed after ${settings.maxRetries} attempts. Manual review needed.`
         );
         return;
       }
