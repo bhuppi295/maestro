@@ -5,6 +5,7 @@ import SetupProject from './components/SetupProject';
 import ProjectContextBanner from './components/ProjectContextBanner';
 import TaskInput from './components/TaskInput';
 import TicketList from './components/TicketList';
+import TicketBoard from './components/TicketBoard';
 import SettingsPanel from './components/SettingsPanel';
 import type { Ticket, ExtensionMessage, ProjectContext, PrerequisitesStatus, MaestroSettings, TicketProgress } from './types';
 
@@ -85,6 +86,17 @@ export default function App() {
   }, []);
 
   const activeCount = tickets.filter(t => t.status !== 'done').length;
+
+  const ticketActions = {
+    onDoWithAI: (id: string) => vscode.postMessage({ type: 'DO_WITH_AI', ticketId: id }),
+    onApprovePlan: (id: string) => vscode.postMessage({ type: 'APPROVE_PLAN', ticketId: id }),
+    onRequestPlanChanges: (id: string, feedback: string) =>
+      vscode.postMessage({ type: 'REQUEST_PLAN_CHANGES', ticketId: id, feedback }),
+    onApproveTest: (id: string) => vscode.postMessage({ type: 'APPROVE_TEST', ticketId: id }),
+    onRejectTest: (id: string, reason: string) =>
+      vscode.postMessage({ type: 'REJECT_TEST', ticketId: id, reason }),
+    onUnblockManual: (id: string) => vscode.postMessage({ type: 'UNBLOCK_MANUAL', ticketId: id }),
+  };
 
   const header = (
     <header className="app-header">
@@ -181,22 +193,9 @@ export default function App() {
         </aside>
 
         <main className="app__main">
-          <TicketList
-            tickets={tickets}
-            progressById={progressById}
-            onDoWithAI={(id: string) =>
-              vscode.postMessage({ type: 'DO_WITH_AI', ticketId: id })}
-            onApprovePlan={(id: string) =>
-              vscode.postMessage({ type: 'APPROVE_PLAN', ticketId: id })}
-            onRequestPlanChanges={(id: string, feedback: string) =>
-              vscode.postMessage({ type: 'REQUEST_PLAN_CHANGES', ticketId: id, feedback })}
-            onApproveTest={(id: string) =>
-              vscode.postMessage({ type: 'APPROVE_TEST', ticketId: id })}
-            onRejectTest={(id: string, reason: string) =>
-              vscode.postMessage({ type: 'REJECT_TEST', ticketId: id, reason })}
-            onUnblockManual={(id: string) =>
-              vscode.postMessage({ type: 'UNBLOCK_MANUAL', ticketId: id })}
-          />
+          {isWide
+            ? <TicketBoard tickets={tickets} progressById={progressById} {...ticketActions} />
+            : <TicketList tickets={tickets} progressById={progressById} {...ticketActions} />}
         </main>
       </div>
     </div>

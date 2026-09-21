@@ -1,5 +1,60 @@
 /* Uses VS Code CSS variables for theme compatibility */
 
+/* Maestro design tokens.
+   Colors sit on top of VS Code's theme so the panel still belongs in the
+   editor, but spacing and type come from our own scale — the sidebar and the
+   full editor tab need genuinely different densities. */
+:root {
+  --mo-accent: #7c6cff;
+  --mo-accent-soft: color-mix(in srgb, var(--mo-accent) 18%, transparent);
+  --mo-accent-text: #a89bff;
+
+  --mo-surface: color-mix(in srgb, var(--vscode-foreground) 4%, var(--vscode-sideBar-background));
+  --mo-surface-raised: color-mix(in srgb, var(--vscode-foreground) 8%, var(--vscode-sideBar-background));
+  --mo-border: color-mix(in srgb, var(--vscode-foreground) 14%, transparent);
+  --mo-border-strong: color-mix(in srgb, var(--vscode-foreground) 26%, transparent);
+
+  --mo-status-todo: #8b93a7;
+  --mo-status-planning: #c792ea;
+  --mo-status-progress: var(--mo-accent);
+  --mo-status-ready: #4ec9a5;
+  --mo-status-done: #4ec9a5;
+  --mo-status-failed: #f07178;
+
+  /* Type + space scale. Wide mode redefines these, so rules stay unchanged. */
+  --mo-fs-xs: 10px;
+  --mo-fs-sm: 11px;
+  --mo-fs-md: 12px;
+  --mo-fs-lg: 14px;
+  --mo-fs-xl: 16px;
+
+  --mo-sp-1: 4px;
+  --mo-sp-2: 8px;
+  --mo-sp-3: 12px;
+  --mo-sp-4: 16px;
+  --mo-sp-5: 24px;
+
+  --mo-radius: 6px;
+  --mo-radius-lg: 10px;
+  --mo-shadow: 0 1px 2px rgba(0,0,0,.18), 0 4px 12px rgba(0,0,0,.14);
+}
+
+/* The editor tab is a workspace, not a panel — give it room to breathe. */
+.app--wide {
+  --mo-fs-xs: 11px;
+  --mo-fs-sm: 12px;
+  --mo-fs-md: 13px;
+  --mo-fs-lg: 17px;
+  --mo-fs-xl: 22px;
+
+  --mo-sp-1: 6px;
+  --mo-sp-2: 10px;
+  --mo-sp-3: 16px;
+  --mo-sp-4: 22px;
+  --mo-sp-5: 32px;
+}
+
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -1151,55 +1206,137 @@ body {
   font-size: 11px;
   opacity: 0.7;
 }
-/* ── Workspace layout ─────────────────────────────────────────
-   Sidebar stacks; the editor tab is wide enough for two columns. */
+/* ── Workspace layout ───────────────────────────────────────── */
 .app__workspace {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--mo-sp-3);
   min-width: 0;
+  flex: 1;
 }
 
 .app__aside,
 .app__main {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--mo-sp-3);
   min-width: 0;
 }
 
+/* Wide: full-bleed workspace. No max-width — the tab IS the canvas. */
 .app--wide {
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
+  padding: var(--mo-sp-4) var(--mo-sp-5);
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app--wide .app__workspace {
   flex-direction: row;
-  align-items: flex-start;
-  gap: 20px;
+  align-items: stretch;
+  gap: var(--mo-sp-4);
+  min-height: 0;
 }
 
 .app--wide .app__aside {
-  flex: 0 0 320px;
-  position: sticky;
-  top: 12px;
+  flex: 0 0 300px;
+  overflow-y: auto;
+  padding-right: var(--mo-sp-1);
 }
 
 .app--wide .app__main {
   flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
 }
 
-/* Two-up ticket groups once there is room for them. */
-.app--wide .ticket-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 12px;
-  align-items: start;
+/* ── Kanban board ───────────────────────────────────────────── */
+.board {
+  display: flex;
+  gap: var(--mo-sp-3);
+  height: 100%;
+  min-height: 0;
+  overflow-x: auto;
+  padding-bottom: var(--mo-sp-2);
 }
 
-.app--wide .archive {
-  grid-column: 1 / -1;
+.board__col {
+  display: flex;
+  flex-direction: column;
+  /* Shrink to fit rather than forcing a horizontal scroll; the board only
+     scrolls once columns would get genuinely unusable (see min-width below). */
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  min-height: 0;
+  background: var(--mo-surface);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius-lg);
+}
+
+.board__col-head {
+  display: flex;
+  align-items: center;
+  gap: var(--mo-sp-2);
+  padding: var(--mo-sp-2) var(--mo-sp-3);
+  border-bottom: 1px solid var(--mo-border);
+}
+
+.board__col-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--col-accent);
+  flex: none;
+}
+
+.board__col-title {
+  font-size: var(--mo-fs-sm);
+  font-weight: 600;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: var(--vscode-foreground);
+}
+
+.board__col-count {
+  margin-left: auto;
+  font-size: var(--mo-fs-xs);
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--mo-surface-raised);
+  color: var(--vscode-descriptionForeground);
+}
+
+.board__col-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mo-sp-2);
+  padding: var(--mo-sp-2);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.board__col-empty {
+  font-size: var(--mo-fs-xs);
+  color: var(--vscode-descriptionForeground);
+  opacity: .6;
+  text-align: center;
+  padding: var(--mo-sp-4) 0;
+}
+
+/* Cards sit flat inside columns — the column already provides the frame. */
+.board .ticket-card {
+  margin: 0;
+  background: var(--mo-surface-raised);
+  border: 1px solid var(--mo-border);
+  border-radius: var(--mo-radius);
+}
+
+.board .ticket-card__connector { display: none; }
+
+.board .ticket-card__content {
+  padding: var(--mo-sp-2) var(--mo-sp-3);
 }
 
 /* ── Progress strip ── */
@@ -1279,3 +1416,152 @@ body {
 }
 
 .progress__step-icon { font-size: 10px; }
+
+/* ── Themed shell ───────────────────────────────────────────── */
+body {
+  background: var(--vscode-sideBar-background);
+}
+
+.app {
+  padding: var(--mo-sp-3);
+  gap: var(--mo-sp-3);
+}
+
+.app-header {
+  gap: var(--mo-sp-2);
+  padding-bottom: var(--mo-sp-2);
+  border-bottom: 1px solid var(--mo-border);
+}
+
+.app-logo { font-size: var(--mo-fs-xl); }
+
+.app-title {
+  font-size: var(--mo-fs-lg);
+  font-weight: 650;
+  letter-spacing: .4px;
+  background: linear-gradient(90deg, var(--vscode-foreground), var(--mo-accent-text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.app--wide .app-header {
+  padding-bottom: var(--mo-sp-3);
+  margin-bottom: var(--mo-sp-1);
+}
+
+.app-header__count {
+  background: var(--mo-accent-soft);
+  color: var(--mo-accent-text);
+  font-size: var(--mo-fs-xs);
+}
+
+/* Accent the primary action so the main path is obvious. */
+.btn--primary {
+  background: var(--mo-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--mo-radius);
+  font-weight: 600;
+}
+.btn--primary:hover {
+  background: color-mix(in srgb, var(--mo-accent) 85%, #fff);
+}
+
+.btn--secondary {
+  border-radius: var(--mo-radius);
+  border: 1px solid var(--mo-border-strong);
+}
+
+.ticket-card__title {
+  font-size: var(--mo-fs-md);
+  font-weight: 600;
+}
+
+/* Status colors from the token set, so board dots and badges agree. */
+.badge--todo        { color: var(--mo-status-todo); }
+.badge--planning,
+.badge--plan-review { color: var(--mo-status-planning); }
+.badge--in-progress,
+.badge--in-review   { color: var(--mo-status-progress); }
+.badge--ready       { color: var(--mo-status-ready); }
+.badge--done        { color: var(--mo-status-done); }
+.badge--failed      { color: var(--mo-status-failed); }
+
+.badge {
+  border-radius: 10px;
+  font-size: var(--mo-fs-xs);
+  font-weight: 600;
+  background: var(--mo-surface-raised);
+  border: 1px solid var(--mo-border);
+}
+
+.progress {
+  border-radius: var(--mo-radius);
+  border-left-color: var(--mo-accent);
+  background: var(--mo-accent-soft);
+}
+
+.progress__step--active { color: var(--mo-accent-text); }
+.progress__retry {
+  background: var(--mo-accent-soft);
+  color: var(--mo-accent-text);
+}
+
+.task-input__textarea,
+.settings__input {
+  border-radius: var(--mo-radius);
+  border: 1px solid var(--mo-border-strong);
+}
+.task-input__textarea:focus,
+.settings__input:focus {
+  outline: none;
+  border-color: var(--mo-accent);
+  box-shadow: 0 0 0 2px var(--mo-accent-soft);
+}
+
+.app--wide .task-input__textarea { min-height: 84px; }
+
+/* ── Board refinements ──────────────────────────────────────── */
+
+/* In a Done column the status is already the column — strikethrough just
+   hurts legibility. */
+.board .ticket-card--done .ticket-card__title {
+  text-decoration: none;
+  opacity: .75;
+}
+
+/* The last column was being clipped by the workspace padding. */
+.board { padding-right: var(--mo-sp-1); }
+.board__col:last-child { margin-right: var(--mo-sp-2); }
+
+/* Columns size to content and stop stretching into dead space. */
+.app--wide .app__main { overflow: hidden; }
+.board__col { max-height: 100%; }
+
+/* Keep the composer at the top of the aside instead of stretching. */
+.app--wide .app__aside { justify-content: flex-start; }
+
+/* Below this the columns stop being readable, so allow scrolling instead. */
+@media (max-width: 1100px) {
+  .board__col { min-width: 240px; }
+}
+
+/* Columns track the tallest content rather than always filling the viewport,
+   so a near-empty board does not read as a wall of empty boxes. */
+.board { align-items: flex-start; }
+.board__col {
+  align-self: stretch;
+  max-height: 100%;
+}
+.board__col-body { flex: 0 1 auto; }
+
+/* A hint of the column accent, so the board scans by color at a glance. */
+.board__col-head {
+  border-top: 2px solid var(--col-accent);
+  border-top-left-radius: var(--mo-radius-lg);
+  border-top-right-radius: var(--mo-radius-lg);
+}
+
+/* Composer keeps its own footprint; the aside should not stretch it. */
+.app--wide .app__aside > * { flex: none; }
