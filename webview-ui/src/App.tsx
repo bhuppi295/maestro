@@ -108,15 +108,6 @@ export default function App() {
         </span>
       )}
       <div className="app-header__actions">
-        {!isWide && (
-          <button
-            className="app-header__btn"
-            title="Open Maestro in a full editor tab"
-            onClick={() => vscode.postMessage({ type: 'OPEN_IN_EDITOR' })}
-          >
-            ⛶
-          </button>
-        )}
         <button
           className={`app-header__btn ${showSettings ? 'app-header__btn--active' : ''}`}
           title="Settings"
@@ -176,8 +167,12 @@ export default function App() {
     );
   }
 
+  // With no tickets the board has nothing to show, so the composer becomes the
+  // page rather than a column beside an empty grid.
+  const isFirstRun = isWide && tickets.length === 0;
+
   return (
-    <div className={`app ${isWide ? 'app--wide' : ''}`}>
+    <div className={`app ${isWide ? 'app--wide' : ''} ${isFirstRun ? 'app--firstrun' : ''}`}>
       {header}
       <div className="app__workspace">
         <aside className="app__aside">

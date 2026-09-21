@@ -1565,3 +1565,152 @@ body {
 
 /* Composer keeps its own footprint; the aside should not stretch it. */
 .app--wide .app__aside > * { flex: none; }
+
+/* ── Board zero state ───────────────────────────────────────── */
+.zero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  padding: var(--mo-sp-5);
+  gap: var(--mo-sp-3);
+}
+
+.zero__glyph {
+  font-size: 44px;
+  line-height: 1;
+  filter: saturate(.5);
+  opacity: .9;
+}
+
+.zero__title {
+  font-size: var(--mo-fs-xl);
+  font-weight: 650;
+  color: var(--vscode-foreground);
+}
+
+.zero__sub {
+  font-size: var(--mo-fs-md);
+  color: var(--vscode-descriptionForeground);
+  max-width: 46ch;
+  line-height: 1.6;
+}
+
+.zero__examples {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--mo-sp-2);
+  margin-top: var(--mo-sp-1);
+}
+
+.zero__example {
+  font-size: var(--mo-fs-sm);
+  color: var(--vscode-descriptionForeground);
+  padding: var(--mo-sp-1) var(--mo-sp-3);
+  border: 1px dashed var(--mo-border-strong);
+  border-radius: 999px;
+}
+
+.zero__flow {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--mo-sp-3);
+  margin-top: var(--mo-sp-4);
+  padding-top: var(--mo-sp-4);
+  border-top: 1px solid var(--mo-border);
+}
+
+.zero__flow-step {
+  display: flex;
+  align-items: center;
+  gap: var(--mo-sp-1);
+  font-size: var(--mo-fs-xs);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.zero__flow-step + .zero__flow-step::before {
+  content: '→';
+  margin-right: var(--mo-sp-2);
+  opacity: .4;
+}
+
+.zero__flow-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.zero__flow-dot[data-i="0"] { background: var(--mo-status-todo); }
+.zero__flow-dot[data-i="1"] { background: var(--mo-status-planning); }
+.zero__flow-dot[data-i="2"] { background: var(--mo-status-progress); }
+.zero__flow-dot[data-i="3"] { background: var(--mo-status-ready); }
+.zero__flow-dot[data-i="4"] { background: var(--mo-status-done); }
+
+/* ── Depth ──────────────────────────────────────────────────── */
+.board .ticket-card {
+  box-shadow: var(--mo-shadow);
+  transition: border-color .12s ease, transform .12s ease;
+}
+.board .ticket-card:hover {
+  border-color: var(--mo-border-strong);
+  transform: translateY(-1px);
+}
+
+/* Tint each column head with its own accent instead of uniform grey. */
+.board__col-head {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--col-accent) 12%, transparent),
+    transparent
+  );
+}
+
+/* The running ticket should be findable at a glance across the board. */
+.board .ticket-card:has(.progress) {
+  border-color: var(--mo-accent);
+  box-shadow: 0 0 0 1px var(--mo-accent-soft), var(--mo-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board .ticket-card { transition: none; }
+  .board .ticket-card:hover { transform: none; }
+}
+
+/* ── First run: composer is the page ────────────────────────── */
+.app--firstrun .app__workspace {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow-y: auto;
+}
+
+/* Zero-state copy reads first, composer sits directly under it. */
+.app--firstrun .app__main { order: 1; flex: none; width: 100%; }
+.app--firstrun .app__aside {
+  order: 2;
+  flex: none;
+  width: min(620px, 100%);
+  overflow: visible;
+  padding-right: 0;
+}
+
+.app--firstrun .zero {
+  height: auto;
+  padding-bottom: var(--mo-sp-4);
+}
+
+/* The project banner is secondary here — the task box is the call to action. */
+.app--firstrun .context-banner { order: 2; opacity: .75; }
+.app--firstrun .task-input { order: 1; }
+.app--firstrun .app__aside { display: flex; flex-direction: column; }
+.app--firstrun .task-input__textarea {
+  min-height: 104px;
+  font-size: var(--mo-fs-md);
+}
