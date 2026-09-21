@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { WebViewMessage, ExtensionMessage, Ticket } from '../types';
+import { WebViewMessage, ExtensionMessage, Ticket, TicketPhase } from '../types';
 import { TicketStore } from '../store/ticket.store';
 import { ContextService } from '../services/context.service';
 import { AgentService } from '../services/agent.service';
@@ -15,6 +15,8 @@ import { ReviewerAI } from '../core/reviewer';
 
 export class MaestroViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
+  /** Editor-tab surfaces. The sidebar view and any panels all stay in sync. */
+  private _panels = new Set<vscode.WebviewPanel>();
   private _ticketStore: TicketStore;
   private _contextService: ContextService;
   private _agent: AgentService;
@@ -70,7 +72,47 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
     // Run prerequisites check on first open
     this._runPrerequisitesCheck();
     // Send current settings to WebView
-    this._view?.webview.postMessage({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
+    this._broadcast({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
+  }
+
+  /**
+   * Opens Maestro as a full editor tab. Reuses the existing tab if one is
+   * already open rather than stacking duplicates.
+   */
+  openInEditor(): void {
+    const existing = this._panels.values().next().value;
+    if (existing) {
+      existing.reveal(vscode.ViewColumn.Active);
+      return;
+    }
+
+    const panel = vscode.window.createWebviewPanel(
+      'maestro.editorPanel',
+      'Maestro',
+      vscode.ViewColumn.Active,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode.Uri.joinPath(this._context.extensionUri, 'webview-ui', 'dist'),
+        ],
+      }
+    );
+
+    panel.iconPath = vscode.Uri.joinPath(this._context.extensionUri, 'media', 'icon.svg');
+    panel.webview.html = this._getHtmlForWebview(panel.webview);
+    panel.webview.onDidReceiveMessage(
+      (message: WebViewMessage) => this._handleMessage(message),
+      undefined,
+      this._context.subscriptions
+    );
+
+    this._panels.add(panel);
+    panel.onDidDispose(() => this._panels.delete(panel), null, this._context.subscriptions);
+
+    this._syncAgentConfig();
+    this._sendInitialState();
+    this._runPrerequisitesCheck();
   }
 
   // ── Private ──────────────────────────────────────────────────
@@ -89,14 +131,34 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
     try {
       const projectTypes = this._contextService.getContext()?.projectTypes ?? [];
       const status = await this._prerequisites.check(projectTypes);
-      this._view?.webview.postMessage({ type: 'PREREQUISITES_RESULT', status });
+      this._broadcast({ type: 'PREREQUISITES_RESULT', status });
     } catch (err) {
       console.error('Prerequisites check failed:', err);
     }
   }
 
   private _postMessage(message: ExtensionMessage) {
+    this._broadcast(message);
+  }
+
+  /** Sends to every open surface so sidebar and editor panel never diverge. */
+  private _broadcast(message: unknown) {
     this._view?.webview.postMessage(message);
+    for (const panel of this._panels) panel.webview.postMessage(message);
+  }
+
+  /** Emits the live phase for a ticket; null clears the progress strip. */
+  private _progress(
+    ticketId: string,
+    phase: TicketPhase | null,
+    attempt = 1,
+    maxAttempts = 1
+  ) {
+    this._postMessage({
+      type: 'TICKET_PROGRESS',
+      ticketId,
+      progress: phase ? { phase, attempt, maxAttempts, startedAt: Date.now() } : null,
+    });
   }
 
   private _log(ticketId: string, msg: string) {
@@ -107,7 +169,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
     const ctx = this._contextService.getContext();
     this._postMessage({ type: 'PROJECT_CONTEXT_READY', context: ctx ?? null } as any);
     this._postMessage({ type: 'TICKETS_UPDATED', tickets: this._ticketStore.getAll() });
-    this._view?.webview.postMessage({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
+    this._broadcast({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
   }
 
   private _getWorkspacePath(): string {
@@ -139,6 +201,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       if (this._cancelFlags.get(ticket.id)) {
         this._ticketStore.updateStatus(ticket.id, 'todo');
         this._refreshTickets();
+        this._progress(ticket.id, null);
         this._log(ticket.id, '🛑 Stopped by user — ticket reset to Todo.');
         this._cancelFlags.delete(ticket.id);
         return;
@@ -150,6 +213,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       this._ticketStore.updateStatus(ticket.id, 'in_progress');
       this._refreshTickets();
 
+      this._progress(ticket.id, 'implementing', attempt, settings.maxRetries);
       if (isRetry) {
         this._log(ticket.id, `🔄 Retry ${attempt}/${settings.maxRetries} — applying reviewer feedback...`);
       } else {
@@ -182,6 +246,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       });
 
       // ── Step B: Static Analysis ────────────────────────────
+      this._progress(ticket.id, 'analyzing', attempt, settings.maxRetries);
       const analyzeCommands = ctx.analyzeCommands ?? [];
       this._log(
         ticket.id,
@@ -194,6 +259,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       // ── Step C: Reviewer AI ────────────────────────────────
       this._ticketStore.updateStatus(ticket.id, 'in_review');
       this._refreshTickets();
+      this._progress(ticket.id, 'reviewing', attempt, settings.maxRetries);
       this._log(ticket.id, '🧠 Reviewer AI checking implementation...');
 
       const diff = await git.getDiff();
@@ -208,6 +274,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
 
       if (review.approved) {
         // ✅ Approved
+        this._progress(ticket.id, null);
         this._ticketStore.updateStatus(ticket.id, 'ready_to_test');
         this._refreshTickets();
         this._log(ticket.id, '✅ Reviewer approved — ready for your manual test!');
@@ -232,6 +299,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
 
       if (attempt >= settings.maxRetries) {
         // Escalate to user after max retries
+        this._progress(ticket.id, null);
         this._ticketStore.updateStatus(ticket.id, 'failed');
         this._refreshTickets();
         this._log(
@@ -286,6 +354,20 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       }
 
       case 'CLEAR_CONTEXT': {
+        const ticketCount = this._ticketStore.getAll().length;
+        const confirm = await vscode.window.showWarningMessage(
+          'Reset Maestro for this project?',
+          {
+            modal: true,
+            detail:
+              ticketCount > 0
+                ? `This deletes the project context and all ${ticketCount} ticket(s). It cannot be undone. Your code is not touched.`
+                : 'This deletes the saved project context. It cannot be undone. Your code is not touched.',
+          },
+          'Reset'
+        );
+        if (confirm !== 'Reset') break;
+
         this._contextService.clearContext();
         this._ticketStore.clear();
         this._postMessage({ type: 'PROJECT_CONTEXT_READY', context: null } as any);
@@ -294,14 +376,14 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       }
 
       case 'GET_SETTINGS': {
-        this._view?.webview.postMessage({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
+        this._broadcast({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
         break;
       }
 
       case 'SAVE_SETTINGS': {
         this._settings.save(message.settings);
         await this._syncAgentConfig();
-        this._view?.webview.postMessage({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
+        this._broadcast({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
         vscode.window.showInformationMessage('✅ Maestro: Settings saved!');
         break;
       }
@@ -309,7 +391,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       case 'RESET_SETTINGS': {
         this._settings.reset();
         await this._syncAgentConfig();
-        this._view?.webview.postMessage({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
+        this._broadcast({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
         break;
       }
 
@@ -325,6 +407,11 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
         break;
       }
 
+      case 'OPEN_IN_EDITOR': {
+        this.openInEditor();
+        break;
+      }
+
       case 'GET_API_KEY_STATUS': {
         this._postMessage({ type: 'API_KEY_STATUS', hasKey: !!(await this._settings.getApiKey()) });
         break;
@@ -333,7 +420,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       case 'CHECK_PREREQUISITES': {
         const projectTypes = this._contextService.getContext()?.projectTypes ?? [];
         const status = await this._prerequisites.check(projectTypes);
-        this._view?.webview.postMessage({ type: 'PREREQUISITES_RESULT', status });
+        this._broadcast({ type: 'PREREQUISITES_RESULT', status });
         break;
       }
 
@@ -417,6 +504,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
         await this._runWithProgress(async (onProgress) => {
           try {
             this._ticketStore.updateStatus(ticket.id, 'planning');
+            this._progress(ticket.id, 'planning');
             this._refreshTickets();
             onProgress('🧠 Planner reading codebase...');
 
@@ -448,6 +536,8 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
             this._ticketStore.updateStatus(ticket.id, 'todo');
             this._refreshTickets();
             this._postMessage({ type: 'ERROR', ticketId: ticket.id, error: (err as Error).message });
+          } finally {
+            this._progress(ticket.id, null);
           }
         });
         break;
@@ -567,6 +657,20 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       }
 
       case 'DELETE_TICKET': {
+        const target = this._ticketStore.getAll().find(t => t.id === message.ticketId);
+        const isRunning = this._abortControllers.has(message.ticketId);
+        const confirm = await vscode.window.showWarningMessage(
+          `Delete "${target?.title ?? 'this ticket'}"?`,
+          {
+            modal: true,
+            detail: isRunning
+              ? 'The agent is still working on this ticket. Deleting stops it immediately. This cannot be undone.'
+              : 'This cannot be undone. Any code already written stays on disk.',
+          },
+          'Delete'
+        );
+        if (confirm !== 'Delete') break;
+
         this._abortControllers.get(message.ticketId)?.abort();
         this._abortControllers.delete(message.ticketId);
         this._cancelFlags.delete(message.ticketId);

@@ -1,12 +1,60 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export interface AnalyzeResult {
   passed: boolean;
   output: string;
   commands: string[];
+}
+
+/**
+ * Analyzer binaries Maestro may launch.
+ *
+ * analyzeCommands are persisted to .maestro/context.json inside the opened
+ * workspace, so they are attacker-controllable by any repo a user opens.
+ * Commands run without a shell, and only these binaries are permitted.
+ */
+const ALLOWED_BINARIES = new Set([
+  'flutter', 'dart',
+  'npx', 'npm', 'pnpm', 'yarn', 'node', 'tsc', 'eslint',
+  'ruff', 'pylint', 'mypy', 'python', 'python3',
+  'go', 'cargo', 'dotnet',
+]);
+
+/** Shell metacharacters — their presence means the string is not a plain command. */
+const SHELL_METACHARACTERS = /[;&|`$(){}<>\n\r\\!*?~[\]'"]/;
+
+export interface ParsedCommand {
+  bin: string;
+  args: string[];
+}
+
+/**
+ * Splits a command into argv, rejecting anything that is not a bare
+ * whitespace-separated invocation of an allow-listed binary.
+ */
+export function parseAnalyzeCommand(command: string): ParsedCommand | { error: string } {
+  const trimmed = command.trim();
+  if (!trimmed) return { error: 'empty command' };
+
+  if (SHELL_METACHARACTERS.test(trimmed)) {
+    return { error: 'contains shell metacharacters' };
+  }
+
+  const parts = trimmed.split(/\s+/);
+  const bin = parts[0];
+
+  // A path separator would let context.json point at an arbitrary executable.
+  if (bin.includes('/') || bin.includes('\\')) {
+    return { error: 'must be a bare binary name, not a path' };
+  }
+  if (!ALLOWED_BINARIES.has(bin)) {
+    return { error: `"${bin}" is not an allowed analyzer` };
+  }
+
+  return { bin, args: parts.slice(1) };
 }
 
 export class AnalyzeService {
@@ -23,10 +71,18 @@ export class AnalyzeService {
     let allPassed = true;
 
     for (const command of analyzeCommands) {
+      const parsed = parseAnalyzeCommand(command);
+      if ('error' in parsed) {
+        outputs.push(`[${command}]\nSkipped — ${parsed.error}.`);
+        allPassed = false;
+        continue;
+      }
+
       try {
-        const { stdout, stderr } = await execAsync(command, {
+        const { stdout, stderr } = await execFileAsync(parsed.bin, parsed.args, {
           cwd: workspacePath,
           timeout: 60_000,
+          shell: false,
         });
         const output = (stdout + stderr).trim();
         outputs.push(`[${command}]\n${output}`);

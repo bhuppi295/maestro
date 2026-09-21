@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { vscode } from '../vscode';
-import type { Ticket } from '../types';
+import type { Ticket, TicketProgress } from '../types';
+import ProgressStrip from './ProgressStrip';
 import StatusBadge from './StatusBadge';
 import { renderMarkdown } from '../utils/markdown';
 
 interface Props {
   tickets: Ticket[];
+  progressById: Record<string, TicketProgress>;
   onDoWithAI: (id: string) => void;
   onApprovePlan: (id: string) => void;
   onRequestPlanChanges: (id: string, feedback: string) => void;
@@ -102,6 +104,7 @@ interface GroupProps {
   groupTitle: string;
   tickets: Ticket[];
   allTickets: Ticket[];
+  progressById: Record<string, TicketProgress>;
   archived?: boolean;
   onDoWithAI: (id: string) => void;
   onApprovePlan: (id: string) => void;
@@ -146,6 +149,7 @@ interface CardProps {
   ticket: Ticket;
   isLast: boolean;
   allTickets: Ticket[];
+  progressById: Record<string, TicketProgress>;
   onDoWithAI: (id: string) => void;
   onApprovePlan: (id: string) => void;
   onRequestPlanChanges: (id: string, feedback: string) => void;
@@ -158,6 +162,7 @@ function TicketCard({
   ticket,
   isLast,
   allTickets,
+  progressById,
   onDoWithAI,
   onApprovePlan,
   onRequestPlanChanges,
@@ -175,6 +180,7 @@ function TicketCard({
     .map(depId => allTickets.find(t => t.id === depId))
     .filter((dep): dep is Ticket => !!dep && dep.status !== 'done');
   const isBlocked = ticket.status === 'todo' && blockers.length > 0;
+  const progress = progressById[ticket.id];
 
   return (
     <div className={`ticket-card ticket-card--${ticket.status} ${isLast ? 'ticket-card--last' : ''} ${isBlocked ? 'ticket-card--blocked' : ''}`}>
@@ -206,6 +212,8 @@ function TicketCard({
             {isBlocked && <span className="badge badge--blocked">🔒 Blocked</span>}
           </div>
         </div>
+
+        {progress && <ProgressStrip progress={progress} />}
 
         {expanded && (
           <div className="ticket-card__body">

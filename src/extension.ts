@@ -21,6 +21,12 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('maestro.openInEditor', () => {
+      provider.openInEditor();
+    })
+  );
+
   // Auto-onboard on activation (folder already open)
   _tryAutoOnboard(context);
 

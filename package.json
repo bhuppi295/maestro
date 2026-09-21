@@ -1,7 +1,7 @@
 {
   "name": "maestro",
   "displayName": "Maestro",
-  "description": "AI-powered developer workflow tool — Jira for AI Agents",
+  "description": "AI-powered developer workflow tool \u2014 Jira for AI Agents",
   "version": "0.1.0",
   "publisher": "bhuppi295",
   "license": "MIT",
@@ -12,7 +12,9 @@
   "engines": {
     "vscode": "^1.80.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -38,8 +40,28 @@
       {
         "command": "maestro.openPanel",
         "title": "Maestro: Open Panel"
+      },
+      {
+        "command": "maestro.openInEditor",
+        "title": "Open Maestro in Editor",
+        "icon": "$(screen-full)",
+        "category": "Maestro"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "maestro.openInEditor",
+          "when": "view == maestro.mainView",
+          "group": "navigation@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "maestro.openInEditor"
+        }
+      ]
+    }
   },
   "scripts": {
     "build:ext": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --platform=node --format=cjs --sourcemap",
