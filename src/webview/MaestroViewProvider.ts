@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { WebViewMessage, ExtensionMessage, Ticket } from '../types';
 import { TicketStore } from '../store/ticket.store';
 import { ContextService } from '../services/context.service';
-import { ClaudeCliService } from '../services/claude-cli.service';
+import { AgentService } from '../services/agent.service';
 import { GitService, resolveGroupBranch } from '../services/git.service';
 import { AnalyzeService } from '../services/analyze.service';
 import { OrchestratorAI } from '../core/orchestrator';
@@ -17,7 +17,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _ticketStore: TicketStore;
   private _contextService: ContextService;
-  private _claudeCli: ClaudeCliService;
+  private _agent: AgentService;
   private _prerequisites: PrerequisitesService;
   private _settings: SettingsService;
   private _orchestrator: OrchestratorAI;
@@ -32,14 +32,14 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
 
   constructor(private readonly _context: vscode.ExtensionContext) {
     this._ticketStore = new TicketStore(_context);
-    this._claudeCli = new ClaudeCliService();
+    this._agent = new AgentService();
     this._contextService = new ContextService(_context);
-    this._orchestrator = new OrchestratorAI(this._claudeCli);
+    this._orchestrator = new OrchestratorAI(this._agent);
     this._prerequisites = new PrerequisitesService();
     this._settings = new SettingsService(_context);
-    this._planner = new PlannerAI(this._claudeCli);
-    this._implementer = new ImplementerAI();
-    this._reviewer = new ReviewerAI(this._claudeCli);
+    this._planner = new PlannerAI(this._agent);
+    this._implementer = new ImplementerAI(this._agent);
+    this._reviewer = new ReviewerAI(this._agent);
     this._analyze = new AnalyzeService();
   }
 
@@ -65,6 +65,8 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       this._context.subscriptions
     );
 
+    // Point the agent at the configured model/binary/key before any run
+    this._syncAgentConfig();
     // Run prerequisites check on first open
     this._runPrerequisitesCheck();
     // Send current settings to WebView
@@ -72,6 +74,16 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
   }
 
   // ── Private ──────────────────────────────────────────────────
+
+  /** Applies settings + stored API key to the agent. */
+  private async _syncAgentConfig() {
+    const settings = this._settings.get();
+    this._agent.setConfig({
+      binaryPath: settings.agentBinaryPath,
+      model: settings.agentModel,
+      apiKey: await this._settings.getApiKey(),
+    });
+  }
 
   private async _runPrerequisitesCheck() {
     try {
@@ -141,7 +153,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       if (isRetry) {
         this._log(ticket.id, `🔄 Retry ${attempt}/${settings.maxRetries} — applying reviewer feedback...`);
       } else {
-        this._log(ticket.id, '⚡ OpenCode is implementing...');
+        this._log(ticket.id, '⚡ Agent is implementing...');
       }
 
       // Pass previous feedback into ticket description for retry
@@ -161,7 +173,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
         ctx,
         workspacePath,
         implController.signal,
-        settings.implementationModel
+        settings.implementationTimeoutMs
       );
       this._abortControllers.delete(ticket.id);
       this._ticketStore.update(ticket.id, {
@@ -287,7 +299,8 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       }
 
       case 'SAVE_SETTINGS': {
-        this._settings.save((message as any).settings);
+        this._settings.save(message.settings);
+        await this._syncAgentConfig();
         this._view?.webview.postMessage({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
         vscode.window.showInformationMessage('✅ Maestro: Settings saved!');
         break;
@@ -295,7 +308,25 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
 
       case 'RESET_SETTINGS': {
         this._settings.reset();
+        await this._syncAgentConfig();
         this._view?.webview.postMessage({ type: 'SETTINGS_UPDATED', settings: this._settings.get() });
+        break;
+      }
+
+      case 'SET_API_KEY': {
+        await this._settings.setApiKey(message.apiKey);
+        await this._syncAgentConfig();
+        this._postMessage({ type: 'API_KEY_STATUS', hasKey: !!message.apiKey });
+        vscode.window.showInformationMessage(
+          message.apiKey
+            ? '✅ Maestro: API key saved to your OS keychain.'
+            : '✅ Maestro: API key cleared — using Claude CLI login.'
+        );
+        break;
+      }
+
+      case 'GET_API_KEY_STATUS': {
+        this._postMessage({ type: 'API_KEY_STATUS', hasKey: !!(await this._settings.getApiKey()) });
         break;
       }
 

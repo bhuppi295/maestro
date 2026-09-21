@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Ticket, ProjectContext, SpecialistType } from '../types';
-import { ClaudeCliService } from '../services/claude-cli.service';
+import { AgentService } from '../services/agent.service';
 import { StackProfile, resolveStackProfile, isSourceFile, describeStack } from './stack-profile';
 
 /** Dependency and build directories that never hold useful project source. */
@@ -35,7 +35,7 @@ const MAX_FILE_READ = 10_000; // balanced quality + token usage
 const MAX_FILES_TO_READ = 5;  // balanced quality + token usage
 
 export class PlannerAI {
-  constructor(private readonly _claudeCli: ClaudeCliService) {}
+  constructor(private readonly _agent: AgentService) {}
 
   async run(
     ticket: Ticket,
@@ -53,7 +53,7 @@ export class PlannerAI {
     // 2. Build prompt and call Claude CLI
     const prompt = this._buildPrompt(ticket, projectContext, relevantFiles);
     const { signal, timeoutMs } = options;
-    const output = await this._claudeCli.runForJson<PlannerOutput>(
+    const output = await this._agent.runForJson<PlannerOutput>(
       prompt,
       workspacePath,
       { effort: 'high', signal, timeoutMs }

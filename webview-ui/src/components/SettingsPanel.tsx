@@ -1,23 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { vscode } from '../vscode';
 import type { MaestroSettings } from '../types';
 
 interface Props {
   settings: MaestroSettings;
+  /** Whether an API key is stored. The key itself never reaches the webview. */
+  hasApiKey: boolean;
   onClose: () => void;
 }
 
-const POPULAR_MODELS = [
-  'opencode/deepseek-v4-flash-free',
-  'opencode/deepseek-v4-flash',
-  'opencode/claude-sonnet-4-6',
-  'opencode/claude-haiku-4-5',
-  'opencode/minimax-m2.5',
-];
+const POPULAR_MODELS = ['sonnet', 'opus', 'haiku'];
 
-export default function SettingsPanel({ settings, onClose }: Props) {
+export default function SettingsPanel({ settings, hasApiKey, onClose }: Props) {
   const [form, setForm] = useState<MaestroSettings>({ ...settings });
   const [saved, setSaved] = useState(false);
+  const [apiKeyDraft, setApiKeyDraft] = useState('');
+
+  useEffect(() => setForm({ ...settings }), [settings]);
 
   const handleSave = () => {
     vscode.postMessage({ type: 'SAVE_SETTINGS', settings: form });
@@ -25,11 +24,20 @@ export default function SettingsPanel({ settings, onClose }: Props) {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleReset = () => {
-    vscode.postMessage({ type: 'RESET_SETTINGS' });
+  const handleReset = () => vscode.postMessage({ type: 'RESET_SETTINGS' });
+
+  const handleSaveKey = () => {
+    vscode.postMessage({ type: 'SET_API_KEY', apiKey: apiKeyDraft.trim() });
+    setApiKeyDraft('');
   };
 
-  const timeoutMinutes = Math.round(form.claudeTimeoutMs / 60_000);
+  const handleClearKey = () => {
+    vscode.postMessage({ type: 'SET_API_KEY', apiKey: '' });
+    setApiKeyDraft('');
+  };
+
+  const planMinutes = Math.round(form.claudeTimeoutMs / 60_000);
+  const implMinutes = Math.round(form.implementationTimeoutMs / 60_000);
 
   return (
     <div className="settings">
@@ -40,46 +48,113 @@ export default function SettingsPanel({ settings, onClose }: Props) {
 
       <div className="settings__body">
 
-        {/* Implementation Model */}
+        {/* Authentication */}
         <div className="settings__field">
-          <label className="settings__label">Implementation Model</label>
-          <p className="settings__hint">OpenCode model used for writing code.</p>
+          <label className="settings__label">Authentication</label>
+          <p className="settings__hint">
+            {hasApiKey
+              ? 'Using the API key stored in your OS keychain.'
+              : 'Using your Claude CLI login. Add an API key only if you prefer key-based billing.'}
+          </p>
           <input
             className="settings__input"
-            value={form.implementationModel}
-            onChange={(e) => setForm(f => ({ ...f, implementationModel: e.target.value }))}
-            placeholder="opencode/deepseek-v4-flash-free"
+            type="password"
+            value={apiKeyDraft}
+            onChange={(e) => setApiKeyDraft(e.target.value)}
+            placeholder={hasApiKey ? '••••••••  (stored)' : 'sk-ant-...  (optional)'}
+            autoComplete="off"
+          />
+          <div className="settings__quick">
+            <button
+              className="settings__chip"
+              onClick={handleSaveKey}
+              disabled={!apiKeyDraft.trim()}
+            >
+              Save key
+            </button>
+            {hasApiKey && (
+              <button className="settings__chip" onClick={handleClearKey}>
+                Remove key — use CLI login
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Model */}
+        <div className="settings__field">
+          <label className="settings__label">Model</label>
+          <p className="settings__hint">Claude model used for every Maestro step.</p>
+          <input
+            className="settings__input"
+            value={form.agentModel}
+            onChange={(e) => setForm(f => ({ ...f, agentModel: e.target.value }))}
+            placeholder="sonnet"
           />
           <div className="settings__quick">
             {POPULAR_MODELS.map(m => (
               <button
                 key={m}
-                className={`settings__chip ${form.implementationModel === m ? 'settings__chip--active' : ''}`}
-                onClick={() => setForm(f => ({ ...f, implementationModel: m }))}
+                className={`settings__chip ${form.agentModel === m ? 'settings__chip--active' : ''}`}
+                onClick={() => setForm(f => ({ ...f, agentModel: m }))}
               >
-                {m.split('/')[1]}
+                {m}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Claude Timeout */}
+        {/* Binary path */}
+        <div className="settings__field">
+          <label className="settings__label">Claude CLI Path</label>
+          <p className="settings__hint">
+            Leave as <code>claude</code> unless it is not on PATH — common when VS Code
+            is launched from the Dock.
+          </p>
+          <input
+            className="settings__input"
+            value={form.agentBinaryPath}
+            onChange={(e) => setForm(f => ({ ...f, agentBinaryPath: e.target.value }))}
+            placeholder="claude"
+          />
+        </div>
+
+        {/* Planning timeout */}
         <div className="settings__field">
           <label className="settings__label">
-            Planning Timeout — <strong>{timeoutMinutes} min</strong>
+            Planning Timeout — <strong>{planMinutes} min</strong>
           </label>
           <p className="settings__hint">How long to wait for Planner / Reviewer AI.</p>
           <input
             className="settings__range"
             type="range"
             min={1} max={10} step={1}
-            value={timeoutMinutes}
+            value={planMinutes}
             onChange={(e) =>
               setForm(f => ({ ...f, claudeTimeoutMs: Number(e.target.value) * 60_000 }))
             }
           />
           <div className="settings__range-labels">
             <span>1 min</span><span>10 min</span>
+          </div>
+        </div>
+
+        {/* Implementation timeout */}
+        <div className="settings__field">
+          <label className="settings__label">
+            Implementation Timeout — <strong>{implMinutes} min</strong>
+          </label>
+          <p className="settings__hint">Writing code usually needs longer than planning.</p>
+          <input
+            className="settings__range"
+            type="range"
+            min={2} max={30} step={1}
+            value={implMinutes}
+            onChange={(e) =>
+              setForm(f => ({ ...f, implementationTimeoutMs: Number(e.target.value) * 60_000 }))
+            }
+          />
+          <div className="settings__range-labels">
+            <span>2 min</span><span>30 min</span>
           </div>
         </div>
 

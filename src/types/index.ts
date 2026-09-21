@@ -93,7 +93,9 @@ export type WebViewMessage =
   | { type: 'SAVE_SETTINGS'; settings: MaestroSettings }
   | { type: 'RESET_SETTINGS' }
   | { type: 'CHECK_PREREQUISITES' }
-  | { type: 'OPEN_URL'; url: string };
+  | { type: 'OPEN_URL'; url: string }
+  | { type: 'SET_API_KEY'; apiKey: string }
+  | { type: 'GET_API_KEY_STATUS' };
 
 // Extension → WebView
 export type ExtensionMessage =
@@ -103,7 +105,8 @@ export type ExtensionMessage =
   | { type: 'PROJECT_CONTEXT_READY'; context: ProjectContext | null }
   | { type: 'ERROR'; ticketId: string; error: string }
   | { type: 'SETTINGS_UPDATED'; settings: MaestroSettings }
-  | { type: 'PREREQUISITES_RESULT'; status: PrerequisitesStatus };
+  | { type: 'PREREQUISITES_RESULT'; status: PrerequisitesStatus }
+  | { type: 'API_KEY_STATUS'; hasKey: boolean };
 
 // Prerequisites
 export interface PrerequisiteItem {

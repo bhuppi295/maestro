@@ -1,21 +1,25 @@
-import { spawn } from 'child_process';
 import { Ticket, ProjectContext, CompletionReport } from '../types';
+import { AgentService } from '../services/agent.service';
 import { describeStack } from './stack-profile';
 
-const TIMEOUT_MS = 5 * 60_000;
-
 export class ImplementerAI {
+  constructor(private readonly _agent: AgentService) {}
+
   async run(
     ticket: Ticket,
     projectContext: ProjectContext,
     workspacePath: string,
     signal?: AbortSignal,
-    model = 'opencode/deepseek-v4-flash-free'
+    timeoutMs?: number
   ): Promise<CompletionReport> {
     const prompt = this._buildPrompt(ticket, projectContext);
 
     try {
-      const output = await this._spawnOpenCode(prompt, workspacePath, signal, model);
+      const output = await this._agent.runWithEdits(prompt, workspacePath, {
+        effort: 'high',
+        signal,
+        timeoutMs,
+      });
       return this._parseCompletionReport(output, ticket);
     } catch (err) {
       const msg = (err as Error).message;
@@ -25,61 +29,6 @@ export class ImplementerAI {
         stoppedReason: msg,
       };
     }
-  }
-
-  private _spawnOpenCode(prompt: string, cwd: string, signal?: AbortSignal, model = 'opencode/deepseek-v4-flash-free'): Promise<string> {
-    return new Promise((resolve, reject) => {
-      if (signal?.aborted) {
-        return reject(new Error('Cancelled by user'));
-      }
-
-      const child = spawn(
-        'opencode',
-        ['run', '-m', model],
-        { cwd }
-      );
-
-      let stdout = '';
-      let stderr = '';
-      let timedOut = false;
-
-      // Abort signal — kill process immediately
-      const onAbort = () => {
-        child.kill('SIGTERM');
-        reject(new Error('Cancelled by user'));
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-
-      const timer = setTimeout(() => {
-        timedOut = true;
-        child.kill();
-        reject(new Error(`OpenCode timed out after ${TIMEOUT_MS / 1000}s`));
-      }, TIMEOUT_MS);
-
-      child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
-      child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
-
-      child.on('close', () => {
-        clearTimeout(timer);
-        signal?.removeEventListener('abort', onAbort);
-        if (timedOut || signal?.aborted) return;
-
-        if (stdout.trim()) {
-          resolve(stdout.trim());
-        } else {
-          reject(new Error(`OpenCode exited with no output. stderr: ${stderr.slice(0, 300)}`));
-        }
-      });
-
-      child.on('error', (err) => {
-        clearTimeout(timer);
-        signal?.removeEventListener('abort', onAbort);
-        reject(err);
-      });
-
-      child.stdin.write(prompt, 'utf8');
-      child.stdin.end();
-    });
   }
 
   private _buildPrompt(ticket: Ticket, ctx: ProjectContext): string {
@@ -111,6 +60,7 @@ ACCEPTANCE CRITERIA (must all be met):
 ${criteria}
 
 CRITICAL RULES:
+- Write the changes to disk with your Edit/Write tools — do not print code back
 - Follow the existing architecture EXACTLY
 - Do NOT change unrelated files
 - Do NOT remove existing functionality

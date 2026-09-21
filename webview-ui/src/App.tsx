@@ -9,8 +9,10 @@ import SettingsPanel from './components/SettingsPanel';
 import type { Ticket, ExtensionMessage, ProjectContext, PrerequisitesStatus, MaestroSettings } from './types';
 
 const DEFAULT_SETTINGS: MaestroSettings = {
-  implementationModel: 'opencode/deepseek-v4-flash-free',
+  agentModel: 'sonnet',
+  agentBinaryPath: 'claude',
   claudeTimeoutMs: 180000,
+  implementationTimeoutMs: 600000,
   maxRetries: 3,
   branchPrefix: 'maestro/',
 };
@@ -23,6 +25,7 @@ export default function App() {
   const [log, setLog] = useState<string>('');
   const [settings, setSettings] = useState<MaestroSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -34,6 +37,9 @@ export default function App() {
           break;
         case 'SETTINGS_UPDATED':
           setSettings((message as any).settings);
+          break;
+        case 'API_KEY_STATUS':
+          setHasApiKey(message.hasKey);
           break;
         case 'PROJECT_CONTEXT_READY':
           setProjectContext((message as any).context ?? null);
@@ -68,7 +74,10 @@ export default function App() {
       <button
         className="app-header__settings"
         title="Settings"
-        onClick={() => setShowSettings(v => !v)}
+        onClick={() => {
+          if (!showSettings) vscode.postMessage({ type: 'GET_API_KEY_STATUS' });
+          setShowSettings(v => !v);
+        }}
       >
         ⚙
       </button>
@@ -82,6 +91,7 @@ export default function App() {
         {header}
         <SettingsPanel
           settings={settings}
+          hasApiKey={hasApiKey}
           onClose={() => setShowSettings(false)}
         />
       </>

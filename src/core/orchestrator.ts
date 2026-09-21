@@ -1,5 +1,5 @@
 import { Ticket, TicketStatus, ProjectContext } from '../types';
-import { ClaudeCliService } from '../services/claude-cli.service';
+import { AgentService } from '../services/agent.service';
 import { describeStack } from './stack-profile';
 
 interface OrchestratorOutput {
@@ -16,7 +16,7 @@ interface RawTicket {
 }
 
 export class OrchestratorAI {
-  constructor(private readonly _claudeCli: ClaudeCliService) {}
+  constructor(private readonly _agent: AgentService) {}
 
   async run(
     rawTask: string,
@@ -24,7 +24,7 @@ export class OrchestratorAI {
     workspacePath: string
   ): Promise<Ticket[]> {
     const prompt = this._buildPrompt(rawTask, projectContext);
-    const output = await this._claudeCli.runForJson<OrchestratorOutput>(
+    const output = await this._agent.runForJson<OrchestratorOutput>(
       prompt,
       workspacePath,
       { effort: 'high' }    // good ticket quality needs careful reasoning
