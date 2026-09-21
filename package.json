@@ -44,7 +44,7 @@
       {
         "command": "maestro.openInEditor",
         "title": "Open Maestro in Editor",
-        "icon": "media/icon.svg",
+        "icon": "$(screen-full)",
         "category": "Maestro"
       }
     ],
@@ -60,7 +60,8 @@
         {
           "command": "maestro.openInEditor",
           "when": "activeWebviewPanelId != 'maestro.editorPanel'",
-          "group": "navigation"
+          "group": "navigation",
+          "icon": "media/icon.svg"
         }
       ],
       "commandPalette": [
