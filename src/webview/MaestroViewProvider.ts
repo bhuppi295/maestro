@@ -12,7 +12,6 @@ import { PlannerAI } from '../core/planner';
 import { ImplementerAI } from '../core/implementer';
 import { ReviewerAI } from '../core/reviewer';
 
-const MAX_ATTEMPTS = 3;
 
 export class MaestroViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
@@ -76,7 +75,8 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
 
   private async _runPrerequisitesCheck() {
     try {
-      const status = await this._prerequisites.check();
+      const projectTypes = this._contextService.getContext()?.projectTypes ?? [];
+      const status = await this._prerequisites.check(projectTypes);
       this._view?.webview.postMessage({ type: 'PREREQUISITES_RESULT', status });
     } catch (err) {
       console.error('Prerequisites check failed:', err);
@@ -139,7 +139,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       this._refreshTickets();
 
       if (isRetry) {
-        this._log(ticket.id, `🔄 Retry ${attempt}/${MAX_ATTEMPTS} — applying reviewer feedback...`);
+        this._log(ticket.id, `🔄 Retry ${attempt}/${settings.maxRetries} — applying reviewer feedback...`);
       } else {
         this._log(ticket.id, '⚡ OpenCode is implementing...');
       }
@@ -169,10 +169,15 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
         attempts: attempt,
       });
 
-      // ── Step B: Flutter Analyze ────────────────────────────
-      this._log(ticket.id, '🔍 Running flutter analyze...');
-      const ctx = this._contextService.getContext()!;
-      const analyzeResult = await this._analyze.run(workspacePath, ctx.analyzeCommands ?? []);
+      // ── Step B: Static Analysis ────────────────────────────
+      const analyzeCommands = ctx.analyzeCommands ?? [];
+      this._log(
+        ticket.id,
+        analyzeCommands.length > 0
+          ? `🔍 Running ${analyzeCommands.join(', ')}...`
+          : '🔍 No analyze commands configured — skipping analysis.'
+      );
+      const analyzeResult = await this._analyze.run(workspacePath, analyzeCommands);
 
       // ── Step C: Reviewer AI ────────────────────────────────
       this._ticketStore.updateStatus(ticket.id, 'in_review');
@@ -210,10 +215,10 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       this._refreshTickets();
       this._log(
         ticket.id,
-        `❌ Reviewer rejected (attempt ${attempt}/${MAX_ATTEMPTS}): ${review.feedback.slice(0, 120)}`
+        `❌ Reviewer rejected (attempt ${attempt}/${settings.maxRetries}): ${review.feedback.slice(0, 120)}`
       );
 
-      if (attempt >= MAX_ATTEMPTS) {
+      if (attempt >= settings.maxRetries) {
         // Escalate to user after max retries
         this._ticketStore.updateStatus(ticket.id, 'failed');
         this._refreshTickets();
@@ -222,7 +227,7 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
           `⚠️ Max attempts reached. Please review manually or click "Handle Manually".`
         );
         vscode.window.showWarningMessage(
-          `Maestro: "${ticket.title}" failed after ${MAX_ATTEMPTS} attempts. Manual review needed.`
+          `Maestro: "${ticket.title}" failed after ${settings.maxRetries} attempts. Manual review needed.`
         );
         return;
       }
@@ -295,13 +300,14 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       }
 
       case 'CHECK_PREREQUISITES': {
-        const status = await this._prerequisites.check();
+        const projectTypes = this._contextService.getContext()?.projectTypes ?? [];
+        const status = await this._prerequisites.check(projectTypes);
         this._view?.webview.postMessage({ type: 'PREREQUISITES_RESULT', status });
         break;
       }
 
       case 'OPEN_URL': {
-        vscode.env.openExternal(vscode.Uri.parse((message as any).url));
+        vscode.env.openExternal(vscode.Uri.parse(message.url));
         break;
       }
 

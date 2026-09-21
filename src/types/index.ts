@@ -1,5 +1,9 @@
 // types/index.ts — All Maestro interfaces
 
+import type { MaestroSettings } from '../services/settings.service';
+
+export type { MaestroSettings };
+
 export type TicketStatus =
   | 'todo'
   | 'planning'
@@ -59,6 +63,13 @@ export interface ProjectContext {
   existingFeatures: string[];
   keyFiles: Record<string, string>;
   rawContent: string;
+
+  // Stack-agnostic detection results
+  projectTypes: string[];
+  analyzeCommands: string[];
+  testCommand: string;
+  packageManager: string;
+  entryPoint: string;
 }
 
 // WebView → Extension
@@ -77,7 +88,12 @@ export type WebViewMessage =
   | { type: 'SAVE_PLAN'; ticketId: string; ticketTitle: string; content: string }
   | { type: 'STOP_TASK'; ticketId: string }
   | { type: 'DELETE_TICKET'; ticketId: string }
-  | { type: 'RETRY_TICKET'; ticketId: string };
+  | { type: 'RETRY_TICKET'; ticketId: string }
+  | { type: 'GET_SETTINGS' }
+  | { type: 'SAVE_SETTINGS'; settings: MaestroSettings }
+  | { type: 'RESET_SETTINGS' }
+  | { type: 'CHECK_PREREQUISITES' }
+  | { type: 'OPEN_URL'; url: string };
 
 // Extension → WebView
 export type ExtensionMessage =
@@ -85,7 +101,9 @@ export type ExtensionMessage =
   | { type: 'TICKET_STATUS_CHANGED'; ticketId: string; status: TicketStatus }
   | { type: 'AI_LOG'; ticketId: string; message: string }
   | { type: 'PROJECT_CONTEXT_READY'; context: ProjectContext | null }
-  | { type: 'ERROR'; ticketId: string; error: string };
+  | { type: 'ERROR'; ticketId: string; error: string }
+  | { type: 'SETTINGS_UPDATED'; settings: MaestroSettings }
+  | { type: 'PREREQUISITES_RESULT'; status: PrerequisitesStatus };
 
 // Prerequisites
 export interface PrerequisiteItem {

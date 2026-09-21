@@ -18,21 +18,118 @@ export interface PrerequisitesStatus {
   items: PrerequisiteItem[];
 }
 
+/** Toolchain required per detected project type. */
+const STACK_TOOLCHAINS: Record<string, ToolchainCheck> = {
+  flutter: {
+    id: 'flutter',
+    name: 'Flutter SDK',
+    bin: 'flutter',
+    args: ['--version'],
+    installNote: 'Required to run flutter analyze.',
+    installUrl: 'https://flutter.dev/docs/get-started/install',
+  },
+  dart: {
+    id: 'dart',
+    name: 'Dart SDK',
+    bin: 'dart',
+    args: ['--version'],
+    installNote: 'Required to run dart analyze.',
+    installUrl: 'https://dart.dev/get-dart',
+  },
+  typescript: {
+    id: 'node',
+    name: 'Node.js',
+    bin: 'node',
+    args: ['--version'],
+    installNote: 'Required to run tsc and npm-based tooling.',
+    installUrl: 'https://nodejs.org',
+  },
+  javascript: {
+    id: 'node',
+    name: 'Node.js',
+    bin: 'node',
+    args: ['--version'],
+    installNote: 'Required to run npm-based tooling.',
+    installUrl: 'https://nodejs.org',
+  },
+  python: {
+    id: 'python',
+    name: 'Python',
+    bin: 'python3',
+    args: ['--version'],
+    installNote: 'Required to run linters and tests.',
+    installUrl: 'https://www.python.org/downloads',
+  },
+};
+
+interface ToolchainCheck {
+  id: string;
+  name: string;
+  bin: string;
+  args: string[];
+  installNote: string;
+  installUrl: string;
+}
+
 export class PrerequisitesService {
-  async check(): Promise<PrerequisitesStatus> {
-    const [claude, opencode, deepseek, git, flutter] = await Promise.all([
+  /**
+   * @param projectTypes Detected project types; only their toolchains are
+   *   required. Omitted means agent tooling only.
+   */
+  async check(projectTypes: string[] = []): Promise<PrerequisitesStatus> {
+    const [claude, opencode, deepseek, git] = await Promise.all([
       this._checkClaude(),
       this._checkOpenCode(),
       this._checkDeepSeek(),
       this._checkGit(),
-      this._checkFlutter(),
     ]);
 
-    const items = [claude, opencode, deepseek, git, flutter];
+    const stackChecks = await Promise.all(
+      this._toolchainsFor(projectTypes).map((t) => this._checkToolchain(t))
+    );
+
+    const items = [claude, opencode, deepseek, git, ...stackChecks];
     return {
       allGood: items.every((i) => i.installed),
       items,
     };
+  }
+
+  private _toolchainsFor(projectTypes: string[]): ToolchainCheck[] {
+    const seen = new Set<string>();
+    const result: ToolchainCheck[] = [];
+    for (const type of projectTypes) {
+      const toolchain = STACK_TOOLCHAINS[type.toLowerCase()];
+      if (toolchain && !seen.has(toolchain.id)) {
+        seen.add(toolchain.id);
+        result.push(toolchain);
+      }
+    }
+    return result;
+  }
+
+  private async _checkToolchain(t: ToolchainCheck): Promise<PrerequisiteItem> {
+    try {
+      const { stdout } = await execFileAsync(t.bin, t.args, {
+        timeout: CHECK_TIMEOUT,
+      });
+      return {
+        id: t.id,
+        name: t.name,
+        installed: true,
+        version: stdout.trim().split('\n')[0],
+        installNote: t.installNote,
+        installUrl: t.installUrl,
+      };
+    } catch {
+      return {
+        id: t.id,
+        name: t.name,
+        installed: false,
+        installNote: t.installNote,
+        installUrl: t.installUrl,
+      };
+    }
   }
 
   // ── Individual checks ────────────────────────────────────────
@@ -134,28 +231,4 @@ export class PrerequisitesService {
     }
   }
 
-  private async _checkFlutter(): Promise<PrerequisiteItem> {
-    try {
-      const { stdout } = await execFileAsync('flutter', ['--version'], {
-        timeout: CHECK_TIMEOUT,
-      });
-      const versionLine = stdout.split('\n')[0];
-      return {
-        id: 'flutter',
-        name: 'Flutter SDK',
-        installed: true,
-        version: versionLine,
-        installNote: 'Required for flutter analyze.',
-        installUrl: 'https://flutter.dev/docs/get-started/install',
-      };
-    } catch {
-      return {
-        id: 'flutter',
-        name: 'Flutter SDK',
-        installed: false,
-        installNote: 'Required for flutter analyze.',
-        installUrl: 'https://flutter.dev/docs/get-started/install',
-      };
-    }
-  }
 }
