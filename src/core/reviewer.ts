@@ -1,5 +1,5 @@
 import { Ticket, ProjectContext, CompletionReport } from '../types';
-import { ClaudeCliService } from '../services/claude-cli.service';
+import { AgentService } from '../services/agent.service';
 import { AnalyzeResult } from '../services/analyze.service';
 import { resolveStackProfile, describeStack } from './stack-profile';
 
@@ -24,7 +24,7 @@ function truncate(text: string, max: number): string {
 }
 
 export class ReviewerAI {
-  constructor(private readonly _claudeCli: ClaudeCliService) {}
+  constructor(private readonly _agent: AgentService) {}
 
   async run(
     ticket: Ticket,
@@ -77,7 +77,7 @@ export class ReviewerAI {
       codeDiff
     );
 
-    const output = await this._claudeCli.runForJson<ReviewerOutput>(
+    const output = await this._agent.runForJson<ReviewerOutput>(
       prompt,
       workspacePath,
       { effort: 'xhigh' } // reviewer needs deep analysis to catch subtle issues

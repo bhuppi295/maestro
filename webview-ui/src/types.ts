@@ -59,7 +59,8 @@ export type ExtensionMessage =
   | { type: 'PROJECT_CONTEXT_READY'; context: ProjectContext | null }
   | { type: 'ERROR'; ticketId: string; error: string }
   | { type: 'PREREQUISITES_RESULT'; status: PrerequisitesStatus }
-  | { type: 'SETTINGS_UPDATED'; settings: MaestroSettings };
+  | { type: 'SETTINGS_UPDATED'; settings: MaestroSettings }
+  | { type: 'API_KEY_STATUS'; hasKey: boolean };
 
 export type WebViewMessage =
   | { type: 'SUBMIT_TASK'; payload: string }
@@ -79,7 +80,9 @@ export type WebViewMessage =
   | { type: 'RETRY_TICKET'; ticketId: string }
   | { type: 'GET_SETTINGS' }
   | { type: 'SAVE_SETTINGS'; settings: MaestroSettings }
-  | { type: 'RESET_SETTINGS' };
+  | { type: 'RESET_SETTINGS' }
+  | { type: 'SET_API_KEY'; apiKey: string }
+  | { type: 'GET_API_KEY_STATUS' };
 
 export interface PrerequisiteItem {
   id: string;
@@ -97,8 +100,10 @@ export interface PrerequisitesStatus {
 
 
 export interface MaestroSettings {
-  implementationModel: string;
+  agentModel: string;
+  agentBinaryPath: string;
   claudeTimeoutMs: number;
+  implementationTimeoutMs: number;
   maxRetries: number;
   branchPrefix: string;
 }

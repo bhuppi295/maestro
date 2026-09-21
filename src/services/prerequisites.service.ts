@@ -77,10 +77,8 @@ export class PrerequisitesService {
    *   required. Omitted means agent tooling only.
    */
   async check(projectTypes: string[] = []): Promise<PrerequisitesStatus> {
-    const [claude, opencode, deepseek, git] = await Promise.all([
+    const [claude, git] = await Promise.all([
       this._checkClaude(),
-      this._checkOpenCode(),
-      this._checkDeepSeek(),
       this._checkGit(),
     ]);
 
@@ -88,7 +86,7 @@ export class PrerequisitesService {
       this._toolchainsFor(projectTypes).map((t) => this._checkToolchain(t))
     );
 
-    const items = [claude, opencode, deepseek, git, ...stackChecks];
+    const items = [claude, git, ...stackChecks];
     return {
       allGood: items.every((i) => i.installed),
       items,
@@ -144,7 +142,7 @@ export class PrerequisitesService {
         name: 'Claude Code CLI',
         installed: true,
         version: stdout.trim().split('\n')[0],
-        installNote: 'Required for Orchestrator, Planner and Reviewer AI.',
+        installNote: 'Required for all Maestro AI steps. Run `claude login`, or add an API key in Settings.',
         installUrl: 'https://claude.ai/code',
       };
     } catch {
@@ -152,60 +150,13 @@ export class PrerequisitesService {
         id: 'claude',
         name: 'Claude Code CLI',
         installed: false,
-        installNote: 'Required for Orchestrator, Planner and Reviewer AI.',
+        installNote: 'Required for all Maestro AI steps. Run `claude login`, or add an API key in Settings.',
         installUrl: 'https://claude.ai/code',
       };
     }
   }
 
-  private async _checkOpenCode(): Promise<PrerequisiteItem> {
-    try {
-      const { stdout } = await execFileAsync('opencode', ['--version'], {
-        timeout: CHECK_TIMEOUT,
-      });
-      return {
-        id: 'opencode',
-        name: 'OpenCode CLI',
-        installed: true,
-        version: stdout.trim().split('\n')[0],
-        installNote: 'Required for implementation agent.',
-        installUrl: 'https://opencode.ai',
-      };
-    } catch {
-      return {
-        id: 'opencode',
-        name: 'OpenCode CLI',
-        installed: false,
-        installNote: 'Required for implementation agent.',
-        installUrl: 'https://opencode.ai',
-      };
-    }
-  }
 
-  private async _checkDeepSeek(): Promise<PrerequisiteItem> {
-    try {
-      const { stdout } = await execFileAsync('opencode', ['models'], {
-        timeout: CHECK_TIMEOUT,
-      });
-      const hasDeepSeek = stdout.toLowerCase().includes('deepseek');
-      return {
-        id: 'deepseek',
-        name: 'DeepSeek in OpenCode',
-        installed: hasDeepSeek,
-        version: hasDeepSeek ? 'Configured ✓' : undefined,
-        installNote: 'Add DeepSeek API key in OpenCode providers.',
-        installUrl: 'https://platform.deepseek.com',
-      };
-    } catch {
-      return {
-        id: 'deepseek',
-        name: 'DeepSeek in OpenCode',
-        installed: false,
-        installNote: 'Add DeepSeek API key via: opencode providers',
-        installUrl: 'https://platform.deepseek.com',
-      };
-    }
-  }
 
   private async _checkGit(): Promise<PrerequisiteItem> {
     try {
