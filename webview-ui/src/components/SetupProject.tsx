@@ -23,7 +23,7 @@ export default function SetupProject() {
         <div className="setup__loading">
           <div className="setup__spinner">⟳</div>
           <p className="setup__loading-msg">{loadingMsg}</p>
-          <p className="setup__hint">Claude is reading your project...</p>
+          <p className="setup__hint">Scanning your project files...</p>
         </div>
       </div>
     );
@@ -34,7 +34,7 @@ export default function SetupProject() {
       <div className="setup__icon">🎼</div>
       <h2 className="setup__title">Welcome to Maestro</h2>
       <p className="setup__subtitle">
-        First, let Maestro understand your project so AI agents can work correctly.
+        First, let Maestro understand your project so the AI agent can work correctly.
       </p>
 
       <div className="setup__options">
@@ -58,7 +58,9 @@ export default function SetupProject() {
       </div>
 
       <p className="setup__note">
-        Maestro reads <code>pubspec.yaml</code>, <code>CLAUDE.md</code>, and your <code>lib/</code> folder to understand your architecture.
+        Maestro detects your stack from manifests like <code>pubspec.yaml</code>,{' '}
+        <code>package.json</code> or <code>pyproject.toml</code>, then reads{' '}
+        <code>CLAUDE.md</code> and your source folder to understand the architecture.
       </p>
     </div>
   );
