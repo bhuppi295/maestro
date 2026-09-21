@@ -985,20 +985,46 @@ body {
   background: transparent;
 }
 
-/* ── Settings gear in header ── */
-.app-header__settings {
+/* ── Header actions ── */
+.app-header__actions {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.app-header__btn {
   background: none;
   border: none;
   color: var(--vscode-descriptionForeground);
   font-size: 14px;
+  line-height: 1;
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 4px 7px;
   border-radius: 4px;
 }
-.app-header__settings:hover {
+.app-header__btn:hover {
   background: var(--vscode-list-hoverBackground);
   color: var(--vscode-foreground);
+}
+.app-header__btn--active {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+.app-header__btn:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.app-header__count {
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 16px;
+  text-align: center;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
 }
 
 /* ── Settings Panel ── */
@@ -1125,3 +1151,131 @@ body {
   font-size: 11px;
   opacity: 0.7;
 }
+/* ── Workspace layout ─────────────────────────────────────────
+   Sidebar stacks; the editor tab is wide enough for two columns. */
+.app__workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app__aside,
+.app__main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app--wide {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.app--wide .app__workspace {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.app--wide .app__aside {
+  flex: 0 0 320px;
+  position: sticky;
+  top: 12px;
+}
+
+.app--wide .app__main {
+  flex: 1 1 auto;
+}
+
+/* Two-up ticket groups once there is room for them. */
+.app--wide .ticket-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.app--wide .archive {
+  grid-column: 1 / -1;
+}
+
+/* ── Progress strip ── */
+.progress {
+  margin: 8px 0 4px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--vscode-textBlockQuote-background);
+  border-left: 2px solid var(--vscode-progressBar-background, var(--vscode-focusBorder));
+}
+
+.progress__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.progress__spinner {
+  display: inline-block;
+  animation: maestro-spin 1.4s linear infinite;
+  color: var(--vscode-descriptionForeground);
+}
+
+@keyframes maestro-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .progress__spinner { animation: none; }
+}
+
+.progress__phase {
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.progress__elapsed {
+  font-family: var(--vscode-editor-font-family);
+  color: var(--vscode-descriptionForeground);
+}
+
+.progress__retry {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.progress__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress__step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.55;
+}
+
+.progress__step--done {
+  opacity: 1;
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+.progress__step--active {
+  opacity: 1;
+  color: var(--vscode-foreground);
+  font-weight: 600;
+}
+
+.progress__step-icon { font-size: 10px; }

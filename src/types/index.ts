@@ -95,7 +95,8 @@ export type WebViewMessage =
   | { type: 'CHECK_PREREQUISITES' }
   | { type: 'OPEN_URL'; url: string }
   | { type: 'SET_API_KEY'; apiKey: string }
-  | { type: 'GET_API_KEY_STATUS' };
+  | { type: 'GET_API_KEY_STATUS' }
+  | { type: 'OPEN_IN_EDITOR' };
 
 // Extension → WebView
 export type ExtensionMessage =
@@ -106,7 +107,23 @@ export type ExtensionMessage =
   | { type: 'ERROR'; ticketId: string; error: string }
   | { type: 'SETTINGS_UPDATED'; settings: MaestroSettings }
   | { type: 'PREREQUISITES_RESULT'; status: PrerequisitesStatus }
-  | { type: 'API_KEY_STATUS'; hasKey: boolean };
+  | { type: 'API_KEY_STATUS'; hasKey: boolean }
+  | { type: 'TICKET_PROGRESS'; ticketId: string; progress: TicketProgress | null };
+
+/** Live state of a running ticket, for the progress strip. */
+export interface TicketProgress {
+  phase: TicketPhase;
+  attempt: number;
+  maxAttempts: number;
+  /** Epoch ms when this phase began, so the UI can tick its own timer. */
+  startedAt: number;
+}
+
+export type TicketPhase =
+  | 'planning'
+  | 'implementing'
+  | 'analyzing'
+  | 'reviewing';
 
 // Prerequisites
 export interface PrerequisiteItem {

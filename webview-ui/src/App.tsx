@@ -6,7 +6,7 @@ import ProjectContextBanner from './components/ProjectContextBanner';
 import TaskInput from './components/TaskInput';
 import TicketList from './components/TicketList';
 import SettingsPanel from './components/SettingsPanel';
-import type { Ticket, ExtensionMessage, ProjectContext, PrerequisitesStatus, MaestroSettings } from './types';
+import type { Ticket, ExtensionMessage, ProjectContext, PrerequisitesStatus, MaestroSettings, TicketProgress } from './types';
 
 const DEFAULT_SETTINGS: MaestroSettings = {
   agentModel: 'sonnet',
@@ -26,6 +26,9 @@ export default function App() {
   const [settings, setSettings] = useState<MaestroSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [progressById, setProgressById] = useState<Record<string, TicketProgress>>({});
+  // Editor-tab surface is much wider than the sidebar; layout adapts to it.
+  const [isWide, setIsWide] = useState(() => window.innerWidth >= 860);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -40,6 +43,14 @@ export default function App() {
           break;
         case 'API_KEY_STATUS':
           setHasApiKey(message.hasKey);
+          break;
+        case 'TICKET_PROGRESS':
+          setProgressById(prev => {
+            const next = { ...prev };
+            if (message.progress) next[message.ticketId] = message.progress;
+            else delete next[message.ticketId];
+            return next;
+          });
           break;
         case 'PROJECT_CONTEXT_READY':
           setProjectContext((message as any).context ?? null);
@@ -67,20 +78,44 @@ export default function App() {
     return () => window.removeEventListener('message', handler);
   }, []);
 
+  useEffect(() => {
+    const onResize = () => setIsWide(window.innerWidth >= 860);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const activeCount = tickets.filter(t => t.status !== 'done').length;
+
   const header = (
     <header className="app-header">
       <span className="app-logo">🎼</span>
       <h1 className="app-title">Maestro</h1>
-      <button
-        className="app-header__settings"
-        title="Settings"
-        onClick={() => {
-          if (!showSettings) vscode.postMessage({ type: 'GET_API_KEY_STATUS' });
-          setShowSettings(v => !v);
-        }}
-      >
-        ⚙
-      </button>
+      {activeCount > 0 && (
+        <span className="app-header__count" title={`${activeCount} active ticket(s)`}>
+          {activeCount}
+        </span>
+      )}
+      <div className="app-header__actions">
+        {!isWide && (
+          <button
+            className="app-header__btn"
+            title="Open Maestro in a full editor tab"
+            onClick={() => vscode.postMessage({ type: 'OPEN_IN_EDITOR' })}
+          >
+            ⛶
+          </button>
+        )}
+        <button
+          className={`app-header__btn ${showSettings ? 'app-header__btn--active' : ''}`}
+          title="Settings"
+          onClick={() => {
+            if (!showSettings) vscode.postMessage({ type: 'GET_API_KEY_STATUS' });
+            setShowSettings(v => !v);
+          }}
+        >
+          ⚙
+        </button>
+      </div>
     </header>
   );
 
@@ -130,32 +165,40 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${isWide ? 'app--wide' : ''}`}>
       {header}
-      <ProjectContextBanner
-        context={projectContext}
-        onReset={() => setProjectContext(null)}
-      />
-      <TaskInput onSubmit={(task: string) => {
-        setLog('');
-        vscode.postMessage({ type: 'SUBMIT_TASK', payload: task });
-      }} />
-      {log && <p className="app-log">{log}</p>}
-      <TicketList
-        tickets={tickets}
-        onDoWithAI={(id: string) =>
-          vscode.postMessage({ type: 'DO_WITH_AI', ticketId: id })}
-        onApprovePlan={(id: string) =>
-          vscode.postMessage({ type: 'APPROVE_PLAN', ticketId: id })}
-        onRequestPlanChanges={(id: string, feedback: string) =>
-          vscode.postMessage({ type: 'REQUEST_PLAN_CHANGES', ticketId: id, feedback })}
-        onApproveTest={(id: string) =>
-          vscode.postMessage({ type: 'APPROVE_TEST', ticketId: id })}
-        onRejectTest={(id: string, reason: string) =>
-          vscode.postMessage({ type: 'REJECT_TEST', ticketId: id, reason })}
-        onUnblockManual={(id: string) =>
-          vscode.postMessage({ type: 'UNBLOCK_MANUAL', ticketId: id })}
-      />
+      <div className="app__workspace">
+        <aside className="app__aside">
+          <ProjectContextBanner
+            context={projectContext}
+            onReset={() => setProjectContext(null)}
+          />
+          <TaskInput onSubmit={(task: string) => {
+            setLog('');
+            vscode.postMessage({ type: 'SUBMIT_TASK', payload: task });
+          }} />
+          {log && <p className="app-log">{log}</p>}
+        </aside>
+
+        <main className="app__main">
+          <TicketList
+            tickets={tickets}
+            progressById={progressById}
+            onDoWithAI={(id: string) =>
+              vscode.postMessage({ type: 'DO_WITH_AI', ticketId: id })}
+            onApprovePlan={(id: string) =>
+              vscode.postMessage({ type: 'APPROVE_PLAN', ticketId: id })}
+            onRequestPlanChanges={(id: string, feedback: string) =>
+              vscode.postMessage({ type: 'REQUEST_PLAN_CHANGES', ticketId: id, feedback })}
+            onApproveTest={(id: string) =>
+              vscode.postMessage({ type: 'APPROVE_TEST', ticketId: id })}
+            onRejectTest={(id: string, reason: string) =>
+              vscode.postMessage({ type: 'REJECT_TEST', ticketId: id, reason })}
+            onUnblockManual={(id: string) =>
+              vscode.postMessage({ type: 'UNBLOCK_MANUAL', ticketId: id })}
+          />
+        </main>
+      </div>
     </div>
   );
 }

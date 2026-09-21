@@ -60,7 +60,17 @@ export type ExtensionMessage =
   | { type: 'ERROR'; ticketId: string; error: string }
   | { type: 'PREREQUISITES_RESULT'; status: PrerequisitesStatus }
   | { type: 'SETTINGS_UPDATED'; settings: MaestroSettings }
-  | { type: 'API_KEY_STATUS'; hasKey: boolean };
+  | { type: 'API_KEY_STATUS'; hasKey: boolean }
+  | { type: 'TICKET_PROGRESS'; ticketId: string; progress: TicketProgress | null };
+
+export type TicketPhase = 'planning' | 'implementing' | 'analyzing' | 'reviewing';
+
+export interface TicketProgress {
+  phase: TicketPhase;
+  attempt: number;
+  maxAttempts: number;
+  startedAt: number;
+}
 
 export type WebViewMessage =
   | { type: 'SUBMIT_TASK'; payload: string }
@@ -82,7 +92,8 @@ export type WebViewMessage =
   | { type: 'SAVE_SETTINGS'; settings: MaestroSettings }
   | { type: 'RESET_SETTINGS' }
   | { type: 'SET_API_KEY'; apiKey: string }
-  | { type: 'GET_API_KEY_STATUS' };
+  | { type: 'GET_API_KEY_STATUS' }
+  | { type: 'OPEN_IN_EDITOR' };
 
 export interface PrerequisiteItem {
   id: string;
