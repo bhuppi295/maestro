@@ -12,6 +12,7 @@ import { PlannerAI } from '../core/planner';
 import { ImplementerAI } from '../core/implementer';
 import { ReviewerAI } from '../core/reviewer';
 
+
 export class MaestroViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _ticketStore: TicketStore;
@@ -74,7 +75,8 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
 
   private async _runPrerequisitesCheck() {
     try {
-      const status = await this._prerequisites.check();
+      const projectTypes = this._contextService.getContext()?.projectTypes ?? [];
+      const status = await this._prerequisites.check(projectTypes);
       this._view?.webview.postMessage({ type: 'PREREQUISITES_RESULT', status });
     } catch (err) {
       console.error('Prerequisites check failed:', err);
@@ -167,10 +169,15 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
         attempts: attempt,
       });
 
-      // ── Step B: Flutter Analyze ────────────────────────────
-      this._log(ticket.id, '🔍 Running flutter analyze...');
-      const ctx = this._contextService.getContext()!;
-      const analyzeResult = await this._analyze.run(workspacePath, ctx.analyzeCommands ?? []);
+      // ── Step B: Static Analysis ────────────────────────────
+      const analyzeCommands = ctx.analyzeCommands ?? [];
+      this._log(
+        ticket.id,
+        analyzeCommands.length > 0
+          ? `🔍 Running ${analyzeCommands.join(', ')}...`
+          : '🔍 No analyze commands configured — skipping analysis.'
+      );
+      const analyzeResult = await this._analyze.run(workspacePath, analyzeCommands);
 
       // ── Step C: Reviewer AI ────────────────────────────────
       this._ticketStore.updateStatus(ticket.id, 'in_review');
@@ -293,13 +300,14 @@ export class MaestroViewProvider implements vscode.WebviewViewProvider {
       }
 
       case 'CHECK_PREREQUISITES': {
-        const status = await this._prerequisites.check();
+        const projectTypes = this._contextService.getContext()?.projectTypes ?? [];
+        const status = await this._prerequisites.check(projectTypes);
         this._view?.webview.postMessage({ type: 'PREREQUISITES_RESULT', status });
         break;
       }
 
       case 'OPEN_URL': {
-        vscode.env.openExternal(vscode.Uri.parse((message as any).url));
+        vscode.env.openExternal(vscode.Uri.parse(message.url));
         break;
       }
 

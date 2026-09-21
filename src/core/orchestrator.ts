@@ -1,5 +1,6 @@
 import { Ticket, TicketStatus, ProjectContext } from '../types';
 import { ClaudeCliService } from '../services/claude-cli.service';
+import { describeStack } from './stack-profile';
 
 interface OrchestratorOutput {
   tickets: RawTicket[];
@@ -33,7 +34,9 @@ export class OrchestratorAI {
   }
 
   private _buildPrompt(rawTask: string, ctx: ProjectContext): string {
-    return `You are Maestro's Orchestrator AI for a Flutter project.
+    const stackLabel = describeStack(ctx);
+
+    return `You are Maestro's Orchestrator AI for a ${stackLabel} project.
 
 PROJECT CONTEXT:
 - App: ${ctx.appName} — ${ctx.appPurpose}
@@ -53,7 +56,7 @@ YOUR JOB:
 
 RULES:
 - Keep titles short (max 6 words)
-- Description should be 1-2 sentences, specific to this Flutter project
+- Description should be 1-2 sentences, specific to this ${stackLabel} project
 - dependsOn contains titles of OTHER tickets in this same list that must be done first
 - If all tasks are independent, dependsOn is empty for all
 - Maximum 6 tickets per request

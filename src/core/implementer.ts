@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import { Ticket, ProjectContext, CompletionReport } from '../types';
+import { describeStack } from './stack-profile';
 
 const TIMEOUT_MS = 5 * 60_000;
 
@@ -85,9 +86,12 @@ export class ImplementerAI {
     const criteria = (ticket.acceptanceCriteria ?? []).map((c, i) => `${i + 1}. ${c}`).join('\n');
     const files = (ticket.affectedFiles ?? []).join('\n');
 
-    return `You are implementing a Flutter feature ticket. Follow the plan EXACTLY.
+    const stackLabel = describeStack(ctx);
+
+    return `You are implementing a ${stackLabel} ticket. Follow the plan EXACTLY.
 
 PROJECT: ${ctx.appName}
+STACK: ${stackLabel}
 ARCHITECTURE: ${ctx.architecture}
 CONVENTIONS: ${ctx.codingConventions}
 

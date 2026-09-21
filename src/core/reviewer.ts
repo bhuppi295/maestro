@@ -1,6 +1,7 @@
 import { Ticket, ProjectContext, CompletionReport } from '../types';
 import { ClaudeCliService } from '../services/claude-cli.service';
 import { AnalyzeResult } from '../services/analyze.service';
+import { resolveStackProfile, describeStack } from './stack-profile';
 
 export interface CriteriaResult {
   criteria: string;
@@ -16,6 +17,11 @@ export interface ReviewerOutput {
 }
 
 const MAX_DIFF_SIZE = 8000; // chars — cap diff to avoid huge prompts
+const MAX_ANALYZE_OUTPUT = 1500;
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max) + '\n... [truncated]' : text;
+}
 
 export class ReviewerAI {
   constructor(private readonly _claudeCli: ClaudeCliService) {}
@@ -48,15 +54,16 @@ export class ReviewerAI {
     }
 
     // Layer 2 — Analyze errors = auto reject
-    if (!analyzeResult.passed && analyzeResult.errorCount > 0) {
+    if (!analyzeResult.passed) {
+      const commandLabel = analyzeResult.commands.join(', ') || 'static analysis';
       return {
         approved: false,
         criteriaResults: (ticket.acceptanceCriteria ?? []).map((c) => ({
           criteria: c,
           passed: false,
-          reason: 'flutter analyze failed — code has compilation errors.',
+          reason: `${commandLabel} failed — code has errors.`,
         })),
-        feedback: `flutter analyze found ${analyzeResult.errorCount} error(s):\n${analyzeResult.errors.slice(0, 5).join('\n')}`,
+        feedback: `${commandLabel} reported errors:\n${truncate(analyzeResult.output, MAX_ANALYZE_OUTPUT)}`,
         missingItems: ticket.acceptanceCriteria ?? [],
       };
     }
@@ -97,9 +104,13 @@ export class ReviewerAI {
     const completedList = report.completed.join('\n') || 'None reported';
     const incompleteList = report.incomplete.join('\n') || 'None';
 
-    return `You are Maestro's Reviewer AI — a senior Flutter developer doing a code review.
+    const profile = resolveStackProfile(ctx);
+    const stackLabel = describeStack(ctx);
+
+    return `You are Maestro's Reviewer AI — a senior ${profile.label} developer doing a code review.
 
 PROJECT: ${ctx.appName}
+STACK: ${stackLabel}
 ARCHITECTURE: ${ctx.architecture}
 
 TICKET: ${ticket.title}
@@ -115,9 +126,9 @@ ${completedList}
 Incomplete:
 ${incompleteList}
 
-FLUTTER ANALYZE:
-${analyze.passed ? '✅ No errors found' : `⚠️ ${analyze.errorCount} warning(s) — no compile errors`}
-${analyze.errors.slice(0, 3).join('\n')}
+STATIC ANALYSIS (${analyze.commands.join(', ') || 'none configured'}):
+${analyze.passed ? '✅ No errors found' : '⚠️ Analysis reported problems'}
+${truncate(analyze.output, MAX_ANALYZE_OUTPUT)}
 
 CODE DIFF (what was changed):
 \`\`\`diff

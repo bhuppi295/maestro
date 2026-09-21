@@ -2,6 +2,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Ticket, ProjectContext, SpecialistType } from '../types';
 import { ClaudeCliService } from '../services/claude-cli.service';
+import { StackProfile, resolveStackProfile, isSourceFile, describeStack } from './stack-profile';
+
+/** Dependency and build directories that never hold useful project source. */
+const SKIP_DIRS = new Set([
+  'node_modules', 'generated', 'build', 'dist', 'out',
+  '.dart_tool', 'vendor', '__pycache__', '.venv', 'venv',
+]);
 
 export interface PlannerOutput {
   implementationPlan: string;
@@ -63,7 +70,8 @@ export class PlannerAI {
     workspacePath: string
   ): Promise<Record<string, string>> {
     const files: Record<string, string> = {};
-    const libPath = path.join(workspacePath, 'lib');
+    const profile = resolveStackProfile(ctx);
+    const sourcePath = this._resolveSourceRoot(profile, workspacePath);
     let count = 0;
 
     // 1. Always read CLAUDE.md — conventions are critical
@@ -76,18 +84,19 @@ export class PlannerAI {
       }
     }
 
-    if (!fs.existsSync(libPath)) return files;
+    if (!sourcePath) return files;
 
     // 2. Detect which feature folder this ticket is about
     //    e.g. "Add loading state to HomeBloc" → lib/features/home/
     const featureFolder = this._detectFeatureFolder(
       ticket.title + ' ' + ticket.description,
-      workspacePath
+      sourcePath,
+      profile
     );
 
     if (featureFolder) {
       // Read all files in the feature folder (presentation + domain layers)
-      const featureFiles = this._readFeatureFolder(featureFolder, workspacePath);
+      const featureFiles = this._readFeatureFolder(featureFolder, workspacePath, profile);
       for (const [relPath, content] of Object.entries(featureFiles)) {
         if (count >= MAX_FILES_TO_READ) break;
         files[relPath] = content;
@@ -98,7 +107,7 @@ export class PlannerAI {
     // 3. Fill remaining slots with keyword-matched files
     const topicText = `${ticket.title} ${ticket.description}`.toLowerCase();
     const keywords = this._extractKeywords(topicText);
-    const found = this._findFilesByKeywords(libPath, keywords, workspacePath);
+    const found = this._findFilesByKeywords(sourcePath, keywords, profile);
 
     for (const filePath of found) {
       if (count >= MAX_FILES_TO_READ) break;
@@ -116,11 +125,22 @@ export class PlannerAI {
    * Detect the most relevant feature folder from the ticket text.
    * e.g. "HomeBloc loading state" → lib/features/home/
    */
+  /** First existing source root for this stack, e.g. lib/ or src/. */
+  private _resolveSourceRoot(profile: StackProfile, workspacePath: string): string | null {
+    for (const root of profile.sourceRoots) {
+      const candidate = path.join(workspacePath, root);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+    return fs.existsSync(workspacePath) ? workspacePath : null;
+  }
+
   private _detectFeatureFolder(
     text: string,
-    workspacePath: string
+    sourcePath: string,
+    profile: StackProfile
   ): string | null {
-    const featuresPath = path.join(workspacePath, 'lib', 'features');
+    if (!profile.featureRoot) return null;
+    const featuresPath = path.join(sourcePath, profile.featureRoot);
     if (!fs.existsSync(featuresPath)) return null;
 
     const featureDirs = fs.readdirSync(featuresPath, { withFileTypes: true })
@@ -155,21 +175,16 @@ export class PlannerAI {
    */
   private _readFeatureFolder(
     featurePath: string,
-    workspacePath: string
+    workspacePath: string,
+    profile: StackProfile
   ): Record<string, string> {
     const result: Record<string, string> = {};
-    const PRIORITY_PATTERNS = [
-      '_bloc.dart', '_state.dart', '_event.dart',
-      '_cubit.dart', '_screen.dart', '_repository.dart',
-      '_repository_impl.dart', '_page.dart',
-    ];
-
-    const files = this._findAllDartFiles(featurePath);
+    const files = this._findSourceFiles(featurePath, profile);
 
     // Prioritise by pattern order
     const sorted = files.sort((a, b) => {
-      const aScore = PRIORITY_PATTERNS.findIndex(p => a.endsWith(p));
-      const bScore = PRIORITY_PATTERNS.findIndex(p => b.endsWith(p));
+      const aScore = profile.priorityFilePatterns.findIndex(p => a.endsWith(p));
+      const bScore = profile.priorityFilePatterns.findIndex(p => b.endsWith(p));
       const aIdx = aScore === -1 ? 99 : aScore;
       const bIdx = bScore === -1 ? 99 : bScore;
       return aIdx - bIdx;
@@ -183,16 +198,16 @@ export class PlannerAI {
     return result;
   }
 
-  private _findAllDartFiles(dirPath: string, depth = 0): string[] {
+  private _findSourceFiles(dirPath: string, profile: StackProfile, depth = 0): string[] {
     if (depth > 4) return [];
     const results: string[] = [];
     try {
       for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
         const fullPath = path.join(dirPath, entry.name);
-        if (entry.isFile() && entry.name.endsWith('.dart') && !entry.name.endsWith('.g.dart') && !entry.name.endsWith('.freezed.dart')) {
+        if (entry.isFile() && isSourceFile(profile, entry.name)) {
           results.push(fullPath);
-        } else if (entry.isDirectory() && !entry.name.startsWith('.')) {
-          results.push(...this._findAllDartFiles(fullPath, depth + 1));
+        } else if (entry.isDirectory() && !entry.name.startsWith('.') && !SKIP_DIRS.has(entry.name)) {
+          results.push(...this._findSourceFiles(fullPath, profile, depth + 1));
         }
       }
     } catch { }
@@ -222,7 +237,7 @@ export class PlannerAI {
   private _findFilesByKeywords(
     dirPath: string,
     keywords: string[],
-    workspacePath: string,
+    profile: StackProfile,
     depth = 0
   ): string[] {
     const found: string[] = [];
@@ -234,18 +249,18 @@ export class PlannerAI {
       for (const entry of entries) {
         if (found.length >= MAX_FILES_TO_READ) break;
         if (entry.name.startsWith('.')) continue;
-        if (entry.name === 'generated') continue;
+        if (SKIP_DIRS.has(entry.name)) continue;
 
         const fullPath = path.join(dirPath, entry.name);
 
-        if (entry.isFile() && entry.name.endsWith('.dart')) {
+        if (entry.isFile() && isSourceFile(profile, entry.name)) {
           const nameLower = entry.name.toLowerCase();
           if (keywords.some((kw) => nameLower.includes(kw))) {
             found.push(fullPath);
           }
         } else if (entry.isDirectory()) {
           found.push(
-            ...this._findFilesByKeywords(fullPath, keywords, workspacePath, depth + 1)
+            ...this._findFilesByKeywords(fullPath, keywords, profile, depth + 1)
           );
         }
       }
@@ -278,7 +293,10 @@ export class PlannerAI {
       .map(([filePath, content]) => `### ${filePath}\n\`\`\`\n${content}\n\`\`\``)
       .join('\n\n');
 
-    return `You are Maestro's Planner AI for a Flutter project.
+    const profile = resolveStackProfile(ctx);
+    const stackLabel = describeStack(ctx);
+
+    return `You are Maestro's Planner AI for a ${stackLabel} project.
 
 PROJECT CONTEXT:
 - App: ${ctx.appName}
@@ -295,20 +313,20 @@ RELEVANT CODEBASE FILES:
 ${filesSection || 'No relevant files found — use project context to infer.'}
 
 YOUR JOB:
-Create a detailed, accurate implementation plan for this Flutter ticket.
+Create a detailed, accurate implementation plan for this ${stackLabel} ticket.
 The plan must follow the existing project architecture and conventions exactly.
 
 RULES:
 - Reference real file paths from the codebase
-- Follow existing patterns (BLoC, clean arch, GetIt, Freezed, etc.) as seen in the files
-- specialistType: use "ui" for Flutter widget/screen work, "logic" for BLoC/repository/data layer, "both" if needed, "general" if unsure
+- Follow existing patterns (${profile.conventionHints}) as seen in the files
+- specialistType: use ${profile.specialistHint}, "both" if needed, "general" if unsure
 - acceptanceCriteria: write 3-6 specific, testable criteria
 - affectedFiles: list ALL files that need to be created or modified
 
 Respond with ONLY this JSON, no explanation:
 {
   "implementationPlan": "Step-by-step plan as a detailed string. Use numbered steps.",
-  "affectedFiles": ["lib/features/...", "lib/core/..."],
+  "affectedFiles": [${profile.examplePaths.map(p => `"${p}"`).join(', ')}],
   "acceptanceCriteria": [
     "Specific testable criterion 1",
     "Specific testable criterion 2"
