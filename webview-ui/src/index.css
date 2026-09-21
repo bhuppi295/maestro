@@ -1714,3 +1714,27 @@ body {
   min-height: 104px;
   font-size: var(--mo-fs-md);
 }
+
+/* ── Reading width ──────────────────────────────────────────────
+   Setup, prerequisites and settings render outside .app, so in a full
+   editor tab they had no width limit and their controls stretched the
+   whole screen. Cap them and centre instead. */
+.setup,
+.prereq,
+.settings {
+  max-width: 560px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.setup__options,
+.setup__option,
+.settings__field,
+.settings__input,
+.task-input__textarea {
+  max-width: 100%;
+}
+
+/* The board's own composer column is already narrow; only the centred
+   first-run column needs the same treatment. */
+.app--firstrun .app__aside { max-width: 560px; }
