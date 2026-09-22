@@ -2,7 +2,7 @@
   "name": "maestro",
   "displayName": "Maestro",
   "description": "AI-powered developer workflow tool — Jira for AI Agents",
-  "version": "0.1.7",
+  "version": "0.1.10",
   "publisher": "bhuppi295",
   "icon": "media/icon.png",
   "license": "MIT",
