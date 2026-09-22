@@ -60,8 +60,7 @@
         {
           "command": "maestro.openInEditor",
           "when": "activeWebviewPanelId != 'maestro.editorPanel'",
-          "group": "navigation",
-          "icon": "media/icon.svg"
+          "group": "navigation"
         }
       ],
       "commandPalette": [
