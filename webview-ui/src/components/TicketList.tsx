@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Ticket, TicketProgress } from '../types';
 import TicketCardView from './TicketCardView';
+import Icon from './Icon';
 
 interface Props {
   tickets: Ticket[];
@@ -49,7 +50,7 @@ export default function TicketList({ tickets, ...actions }: Props) {
       {/* Active tickets */}
       {activeTickets.length === 0 && archivedTickets.length > 0 && (
         <div className="ticket-list__empty">
-          <p>All tasks complete! 🎉</p>
+          <p>All tasks complete! <Icon name="verified-filled" /></p>
         </div>
       )}
 
@@ -120,7 +121,7 @@ function TaskGroup({ groupTitle, tickets, allTickets, archived = false, ...actio
     <div className={`task-group ${allDone ? 'task-group--done' : ''} ${archived ? 'task-group--archived' : ''}`}>
       <div className="task-group__header">
         <div className="task-group__header-left">
-          <span className="task-group__icon">{allDone ? '✅' : '📋'}</span>
+          <Icon name={allDone ? "pass-filled" : "checklist"} className="task-group__icon" />
           <span className="task-group__title">{groupTitle}</span>
         </div>
         <span className="task-group__progress">{doneCount}/{total}</span>

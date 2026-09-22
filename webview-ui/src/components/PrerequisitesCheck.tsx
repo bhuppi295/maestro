@@ -1,4 +1,5 @@
 import { vscode } from '../vscode';
+import Icon from './Icon';
 import type { PrerequisitesStatus } from '../types';
 
 interface Props {
@@ -15,7 +16,7 @@ export default function PrerequisitesCheck({ status, onRecheck }: Props) {
   return (
     <div className="prereq">
       <div className="prereq__header">
-        <span className="prereq__icon">{status.allGood ? '✅' : '⚠️'}</span>
+        <Icon name={status.allGood ? "pass-filled" : "warning"} className="prereq__icon" />
         <div>
           <h2 className="prereq__title">
             {status.allGood ? 'All set!' : 'Setup Required'}
@@ -35,7 +36,7 @@ export default function PrerequisitesCheck({ status, onRecheck }: Props) {
             className={`prereq__item ${item.installed ? 'prereq__item--ok' : 'prereq__item--missing'}`}
           >
             <div className="prereq__item-left">
-              <span className="prereq__item-icon">{item.installed ? '✅' : '❌'}</span>
+              <Icon name={item.installed ? "pass-filled" : "error"} className="prereq__item-icon" />
               <div>
                 <strong className="prereq__item-name">{item.name}</strong>
                 {item.installed && item.version && (
@@ -64,7 +65,7 @@ export default function PrerequisitesCheck({ status, onRecheck }: Props) {
 
       <div className="prereq__footer">
         <button className="task-input__btn" onClick={handleRecheck}>
-          🔄 Re-check
+          <Icon name="refresh" /> Re-check
         </button>
         {status.allGood && (
           <p className="prereq__continue">

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Icon from './Icon';
 
 interface Props {
   onSubmit: (task: string) => void;
@@ -35,7 +36,7 @@ export default function TaskInput({ onSubmit }: Props) {
         onClick={handleSubmit}
         disabled={!value.trim()}
       >
-        Create Tickets ✦
+        Create Tickets <Icon name="sparkle" />
       </button>
       <p className="task-input__hint">⌘+Enter to submit</p>
     </div>

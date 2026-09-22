@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { vscode } from './vscode';
+import Icon from './components/Icon';
 import PrerequisitesCheck from './components/PrerequisitesCheck';
 import SetupProject from './components/SetupProject';
 import ProjectContextBanner from './components/ProjectContextBanner';
@@ -100,7 +101,7 @@ export default function App() {
 
   const header = (
     <header className="app-header">
-      <span className="app-logo">🎼</span>
+      <Icon name="music" className="app-logo" />
       <h1 className="app-title">Maestro</h1>
       {activeCount > 0 && (
         <span className="app-header__count" title={`${activeCount} active ticket(s)`}>
@@ -116,7 +117,7 @@ export default function App() {
             setShowSettings(v => !v);
           }}
         >
-          ⚙
+          <Icon name="settings-gear" />
         </button>
       </div>
     </header>
@@ -141,7 +142,7 @@ export default function App() {
       <>
         {header}
         <div className="setup__loading" style={{ padding: '32px' }}>
-          <div className="setup__spinner">⟳</div>
+          <Icon name="loading" spin className="setup__spinner" />
           <p className="setup__loading-msg">Checking prerequisites...</p>
         </div>
       </>

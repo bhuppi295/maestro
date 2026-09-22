@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Icon from './Icon';
 import { vscode } from '../vscode';
 import type { ProjectContext } from '../types';
 
@@ -37,19 +38,19 @@ export default function ProjectContextBanner({ context, onReset }: Props) {
           onClick={() => setMenuOpen((v) => !v)}
           title="Context options"
         >
-          ⚙
+          <Icon name="settings-gear" />
         </button>
 
         {menuOpen && (
           <div className="context-banner__dropdown">
             <button className="context-banner__dropdown-item" onClick={handleRefresh}>
-              🔄 Refresh Context
+              <Icon name="refresh" /> Refresh Context
             </button>
             <button
               className="context-banner__dropdown-item context-banner__dropdown-item--danger"
               onClick={handleReset}
             >
-              🗑 Reset Project
+              <Icon name="trash" /> Reset Project
             </button>
           </div>
         )}

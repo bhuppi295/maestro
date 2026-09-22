@@ -4,6 +4,7 @@ import type { Ticket, TicketProgress } from '../types';
 import StatusBadge from './StatusBadge';
 import ProgressStrip from './ProgressStrip';
 import { renderMarkdown } from '../utils/markdown';
+import Icon from './Icon';
 
 interface CardProps {
   ticket: Ticket;
@@ -62,14 +63,14 @@ export default function TicketCardView({
                     e.stopPropagation();
                     vscode.postMessage({ type: 'DELETE_TICKET', ticketId: ticket.id });
                   }}
-                >🗑</button>
+                ><Icon name="trash" /></button>
               )}
-              <span className="ticket-card__chevron">{expanded ? '▲' : '▼'}</span>
+              <Icon name={expanded ? "chevron-up" : "chevron-down"} className="ticket-card__chevron" />
             </div>
           </div>
           <div className="ticket-card__badges">
             <StatusBadge status={ticket.status} />
-            {isBlocked && <span className="badge badge--blocked">🔒 Blocked</span>}
+            {isBlocked && <span className="badge badge--blocked"><Icon name="lock" /> Blocked</span>}
           </div>
         </div>
 
@@ -79,7 +80,7 @@ export default function TicketCardView({
           <div className="ticket-card__body">
             {isBlocked && (
               <div className="ticket-card__blocked-warning">
-                <span>🔒 Complete first:</span>
+                <span><Icon name="lock" /> Complete first:</span>
                 <ul>{blockers.map(b => <li key={b.id}>{b.title}</li>)}</ul>
               </div>
             )}
@@ -92,12 +93,12 @@ export default function TicketCardView({
                   <h4>Implementation Plan</h4>
                   <div className="ticket-card__plan-actions">
                     <button className="btn-icon" title="Copy plan"
-                      onClick={() => navigator.clipboard.writeText(ticket.implementationPlan!)}>📋</button>
+                      onClick={() => navigator.clipboard.writeText(ticket.implementationPlan!)}><Icon name="copy" /></button>
                     <button className="btn-icon" title="Save plan"
                       onClick={() => vscode.postMessage({
                         type: 'SAVE_PLAN', ticketId: ticket.id,
                         ticketTitle: ticket.title, content: ticket.implementationPlan!,
-                      })}>💾</button>
+                      })}><Icon name="save" /></button>
                   </div>
                 </div>
                 <div className="ticket-card__markdown"
@@ -138,25 +139,25 @@ export default function TicketCardView({
             <div className="ticket-card__actions">
               {ticket.status === 'todo' && !isBlocked && (
                 <button className="btn btn--primary" onClick={() => onDoWithAI(ticket.id)}>
-                  ⚡ Do with AI
+                  <Icon name="zap" /> Do with AI
                 </button>
               )}
 
               {ticket.status === 'in_progress' && (
                 <button className="btn btn--stop"
                   onClick={() => vscode.postMessage({ type: 'STOP_TASK', ticketId: ticket.id })}>
-                  🛑 Stop
+                  <Icon name="debug-stop" /> Stop
                 </button>
               )}
 
               {ticket.status === 'plan_review' && (
                 <>
                   <button className="btn btn--success" onClick={() => onApprovePlan(ticket.id)}>
-                    ✅ Approve Plan
+                    <Icon name="check" /> Approve Plan
                   </button>
                   {!showChangesInput ? (
                     <button className="btn btn--secondary" onClick={() => setShowChangesInput(true)}>
-                      ✏️ Request Changes
+                      <Icon name="edit" /> Request Changes
                     </button>
                   ) : (
                     <div className="ticket-card__input-group">
@@ -176,11 +177,11 @@ export default function TicketCardView({
               {ticket.status === 'ready_to_test' && (
                 <>
                   <button className="btn btn--success" onClick={() => onApproveTest(ticket.id)}>
-                    🚀 Looks Good
+                    <Icon name="rocket" /> Looks Good
                   </button>
                   {!showRejectInput ? (
                     <button className="btn btn--danger" onClick={() => setShowRejectInput(true)}>
-                      ❌ Reject
+                      <Icon name="close" /> Reject
                     </button>
                   ) : (
                     <div className="ticket-card__input-group">
@@ -201,10 +202,10 @@ export default function TicketCardView({
                 <div className="ticket-card__actions">
                   <button className="btn btn--primary"
                     onClick={() => vscode.postMessage({ type: 'RETRY_TICKET', ticketId: ticket.id })}>
-                    🔄 Retry with AI
+                    <Icon name="refresh" /> Retry with AI
                   </button>
                   <button className="btn btn--secondary" onClick={() => onUnblockManual(ticket.id)}>
-                    🔧 Handle Manually
+                    <Icon name="wrench" /> Handle Manually
                   </button>
                 </div>
               )}

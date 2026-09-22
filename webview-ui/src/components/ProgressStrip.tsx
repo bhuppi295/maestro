@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { TicketProgress, TicketPhase } from '../types';
+import Icon from './Icon';
 
 const PHASES: { id: TicketPhase; label: string; icon: string }[] = [
-  { id: 'planning', label: 'Planning', icon: '🧠' },
-  { id: 'implementing', label: 'Implementing', icon: '⚡' },
-  { id: 'analyzing', label: 'Analyzing', icon: '🔍' },
-  { id: 'reviewing', label: 'Reviewing', icon: '👀' },
+  { id: 'planning', label: 'Planning', icon: 'lightbulb' },
+  { id: 'implementing', label: 'Implementing', icon: 'zap' },
+  { id: 'analyzing', label: 'Analyzing', icon: 'search' },
+  { id: 'reviewing', label: 'Reviewing', icon: 'eye' },
 ];
 
 function formatElapsed(ms: number): string {
@@ -31,7 +32,7 @@ export default function ProgressStrip({ progress }: { progress: TicketProgress }
   return (
     <div className="progress" role="status" aria-live="polite">
       <div className="progress__head">
-        <span className="progress__spinner" aria-hidden="true">⟳</span>
+        <Icon name="loading" spin className="progress__spinner" />
         <span className="progress__phase">
           {PHASES[activeIndex]?.label ?? 'Working'}
         </span>
@@ -48,9 +49,7 @@ export default function ProgressStrip({ progress }: { progress: TicketProgress }
           const state = i < activeIndex ? 'done' : i === activeIndex ? 'active' : 'pending';
           return (
             <li key={p.id} className={`progress__step progress__step--${state}`}>
-              <span className="progress__step-icon" aria-hidden="true">
-                {state === 'done' ? '✓' : p.icon}
-              </span>
+              <Icon name={state === 'done' ? 'check' : p.icon} className="progress__step-icon" />
               <span className="progress__step-label">{p.label}</span>
             </li>
           );
