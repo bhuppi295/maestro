@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { vscode } from '../vscode';
 import type { Ticket, TicketProgress } from '../types';
 import StatusBadge from './StatusBadge';
@@ -36,6 +37,18 @@ export default function TicketCardView({
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [showChangesInput, setShowChangesInput] = useState(false);
+  const [showPlan, setShowPlan] = useState(false);
+  const [showPlanChanges, setShowPlanChanges] = useState(false);
+
+  // Esc closes the plan modal even though it portals to document.body.
+  useEffect(() => {
+    if (!showPlan) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowPlan(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showPlan]);
 
   const blockers = ticket.dependsOn
     .map((depId) => allTickets.find((t) => t.id === depId))
@@ -118,6 +131,13 @@ export default function TicketCardView({
                   <div className="ticket-card__plan-actions">
                     <button
                       className="btn-icon"
+                      title="View plan"
+                      onClick={() => setShowPlan(true)}
+                    >
+                      <Icon name="eye" />
+                    </button>
+                    <button
+                      className="btn-icon"
                       title="Copy plan"
                       onClick={() => navigator.clipboard.writeText(ticket.implementationPlan!)}
                     >
@@ -139,10 +159,9 @@ export default function TicketCardView({
                     </button>
                   </div>
                 </div>
-                <div
-                  className="ticket-card__markdown"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(ticket.implementationPlan) }}
-                />
+                <button className="plan-teaser" onClick={() => setShowPlan(true)}>
+                  <Icon name="eye" /> View full plan
+                </button>
               </section>
             )}
 
@@ -300,6 +319,114 @@ export default function TicketCardView({
           </div>
         )}
       </div>
+
+      {showPlan &&
+        ticket.implementationPlan &&
+        createPortal(
+          <div
+            className="plan-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Plan: ${ticket.title}`}
+            onClick={() => setShowPlan(false)}
+          >
+            <div className="plan-modal__sheet" onClick={(e) => e.stopPropagation()}>
+              <header className="plan-modal__head">
+                <div className="plan-modal__title">
+                  <Icon name="lightbulb" />
+                  <div>
+                    <strong>{ticket.title}</strong>
+                    <span>Implementation plan</span>
+                  </div>
+                </div>
+                <div className="plan-modal__actions">
+                  <button
+                    className="btn-icon"
+                    title="Copy plan"
+                    onClick={() => navigator.clipboard.writeText(ticket.implementationPlan!)}
+                  >
+                    <Icon name="copy" />
+                  </button>
+                  <button
+                    className="btn-icon"
+                    title="Save plan"
+                    onClick={() =>
+                      vscode.postMessage({
+                        type: 'SAVE_PLAN',
+                        ticketId: ticket.id,
+                        ticketTitle: ticket.title,
+                        content: ticket.implementationPlan!,
+                      })
+                    }
+                  >
+                    <Icon name="save" />
+                  </button>
+                  <button className="btn-icon" title="Close" onClick={() => setShowPlan(false)}>
+                    <Icon name="close" />
+                  </button>
+                </div>
+              </header>
+              <div
+                className="ticket-card__markdown plan-modal__body"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(ticket.implementationPlan) }}
+              />
+              {ticket.status === 'plan_review' && (
+                <footer className="plan-modal__foot">
+                  {!showPlanChanges ? (
+                    <>
+                      <button
+                        className="btn btn--success"
+                        onClick={() => {
+                          onApprovePlan(ticket.id);
+                          setShowPlan(false);
+                        }}
+                      >
+                        <Icon name="check" /> Approve plan
+                      </button>
+                      <button
+                        className="btn btn--secondary"
+                        onClick={() => setShowPlanChanges(true)}
+                      >
+                        <Icon name="edit" /> Request changes
+                      </button>
+                    </>
+                  ) : (
+                    <div className="ticket-card__input-group">
+                      <textarea
+                        placeholder="What should be changed?"
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        rows={2}
+                      />
+                      <div className="plan-modal__foot-row">
+                        <button
+                          className="btn btn--warning"
+                          onClick={() => {
+                            if (feedback.trim()) {
+                              onRequestPlanChanges(ticket.id, feedback);
+                              setFeedback('');
+                              setShowPlanChanges(false);
+                              setShowPlan(false);
+                            }
+                          }}
+                        >
+                          Send feedback
+                        </button>
+                        <button
+                          className="btn btn--secondary"
+                          onClick={() => setShowPlanChanges(false)}
+                        >
+                          Back
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </footer>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
