@@ -26,16 +26,14 @@ export default function ProgressStrip({ progress }: { progress: TicketProgress }
     return () => clearInterval(id);
   }, [progress.phase, progress.startedAt]);
 
-  const activeIndex = PHASES.findIndex(p => p.id === progress.phase);
+  const activeIndex = PHASES.findIndex((p) => p.id === progress.phase);
   const showRetry = progress.maxAttempts > 1 && progress.attempt > 1;
 
   return (
     <div className="progress" role="status" aria-live="polite">
       <div className="progress__head">
         <Icon name="loading" spin className="progress__spinner" />
-        <span className="progress__phase">
-          {PHASES[activeIndex]?.label ?? 'Working'}
-        </span>
+        <span className="progress__phase">{PHASES[activeIndex]?.label ?? 'Working'}</span>
         <span className="progress__elapsed">{formatElapsed(now - progress.startedAt)}</span>
         {showRetry && (
           <span className="progress__retry">

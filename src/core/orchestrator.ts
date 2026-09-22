@@ -27,7 +27,7 @@ export class OrchestratorAI {
     const output = await this._agent.runForJson<OrchestratorOutput>(
       prompt,
       workspacePath,
-      { effort: 'high' }    // good ticket quality needs careful reasoning
+      { effort: 'high' } // good ticket quality needs careful reasoning
     );
 
     return this._mapToTickets(output, rawTask);
@@ -107,9 +107,7 @@ Respond with ONLY this JSON, no explanation:
       const rawDeps = output.tickets[i].dependsOn ?? [];
       tickets[i].dependsOn = rawDeps
         .map((depTitle) => {
-          const match = tickets.find(
-            (t) => t.title.toLowerCase() === depTitle.toLowerCase()
-          );
+          const match = tickets.find((t) => t.title.toLowerCase() === depTitle.toLowerCase());
           return match?.id ?? null;
         })
         .filter((id): id is string => id !== null);

@@ -48,7 +48,9 @@ async function _tryAutoOnboard(extContext: vscode.ExtensionContext): Promise<voi
   if (svc.hasContext()) return;
 
   try {
-    await svc.generateFromWorkspace((_msg) => { /* silent background scan */ });
+    await svc.generateFromWorkspace((_msg) => {
+      /* silent background scan */
+    });
   } catch (err) {
     console.error('[Maestro] Auto-onboarding failed:', err);
   }

@@ -1,0 +1,9 @@
+node_modules
+out
+dist
+webview-ui/dist
+webview-ui/node_modules
+src/vendor
+*.vsix
+package-lock.json
+webview-ui/package-lock.json

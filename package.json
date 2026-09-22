@@ -1,9 +1,10 @@
 {
   "name": "maestro",
   "displayName": "Maestro",
-  "description": "AI-powered developer workflow tool \u2014 Jira for AI Agents",
-  "version": "0.1.0",
+  "description": "AI-powered developer workflow tool — Jira for AI Agents",
+  "version": "0.1.4",
   "publisher": "bhuppi295",
+  "icon": "media/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -56,13 +57,6 @@
           "group": "navigation@1"
         }
       ],
-      "editor/title": [
-        {
-          "command": "maestro.openInEditor",
-          "when": "activeWebviewPanelId != 'maestro.editorPanel'",
-          "group": "navigation"
-        }
-      ],
       "commandPalette": [
         {
           "command": "maestro.openInEditor"
@@ -74,7 +68,13 @@
     "build:ext": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --platform=node --format=cjs --sourcemap",
     "build:ui": "cd webview-ui && npm run build",
     "build": "npm run build:ext && npm run build:ui",
-    "test": "esbuild src/services/analyze.service.test.ts --bundle --platform=node --format=cjs --outfile=out/analyze.service.test.js && node --test out/analyze.service.test.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npx tsc --noEmit -p tsconfig.json && cd webview-ui && npx tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src webview-ui/src",
+    "lint:fix": "eslint src webview-ui/src --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "watch:ext": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --platform=node --format=cjs --sourcemap --watch",
     "watch:ui": "cd webview-ui && npm run dev",
     "vscode:prepublish": "npm run build",
@@ -83,9 +83,14 @@
   "devDependencies": {
     "@types/node": "^18.0.0",
     "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.24.0",
     "esbuild": "^0.20.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.8",
     "typescript": "^5.3.0",
-    "@vscode/vsce": "^2.24.0"
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^3.2.7"
   },
   "dependencies": {
     "simple-git": "^3.22.0"

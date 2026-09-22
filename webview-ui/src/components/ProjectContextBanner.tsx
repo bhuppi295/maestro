@@ -22,14 +22,25 @@ export default function ProjectContextBanner({ context, onReset }: Props) {
     onReset();
   };
 
+  const initial = (context.appName?.trim()?.[0] ?? 'M').toUpperCase();
+
   return (
     <div className="context-banner">
       <div className="context-banner__info">
-        <span className="context-banner__dot" />
-        <div>
+        <span className="context-banner__avatar" aria-hidden="true">
+          {initial}
+        </span>
+        <div className="context-banner__text">
           <strong>{context.appName}</strong>
-          <p>{context.techStack.slice(0, 3).join(' · ')}</p>
+          <div className="context-banner__stack">
+            {context.techStack.slice(0, 3).map((s) => (
+              <span key={s} className="stack-pill">
+                {s}
+              </span>
+            ))}
+          </div>
         </div>
+        <span className="context-banner__dot" title="Context loaded" />
       </div>
 
       <div className="context-banner__menu-wrap">

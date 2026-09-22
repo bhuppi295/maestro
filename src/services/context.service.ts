@@ -8,37 +8,37 @@ const MAX_FILE_SIZE = 8_000;
 
 // Flutter/Dart package map
 const FLUTTER_PACKAGE_MAP: Record<string, string> = {
-  flutter_bloc:                'BLoC / flutter_bloc',
-  riverpod:                    'Riverpod',
-  provider:                    'Provider',
-  get_it:                      'get_it (DI)',
-  injectable:                  'injectable (DI)',
-  freezed_annotation:          'freezed',
-  drift:                       'Drift (SQLite ORM)',
-  hive:                        'Hive',
-  isar:                        'Isar',
-  sqflite:                     'sqflite',
-  go_router:                   'go_router',
-  auto_route:                  'auto_route',
-  dio:                         'dio',
-  firebase_core:               'Firebase',
-  firebase_auth:               'Firebase Auth',
-  cloud_firestore:             'Firebase Firestore',
-  firebase_storage:            'Firebase Storage',
-  supabase_flutter:            'Supabase',
-  json_serializable:           'json_serializable',
-  retrofit:                    'Retrofit',
-  objectbox:                   'ObjectBox',
-  floor:                       'Floor',
-  google_sign_in:              'Google Sign-In',
-  sign_in_with_apple:          'Sign in with Apple',
-  revenue_cat:                 'RevenueCat',
-  purchases_flutter:           'RevenueCat',
-  geolocator:                  'geolocator',
-  sensors_plus:                'sensors_plus',
-  connectivity_plus:           'connectivity_plus',
+  flutter_bloc: 'BLoC / flutter_bloc',
+  riverpod: 'Riverpod',
+  provider: 'Provider',
+  get_it: 'get_it (DI)',
+  injectable: 'injectable (DI)',
+  freezed_annotation: 'freezed',
+  drift: 'Drift (SQLite ORM)',
+  hive: 'Hive',
+  isar: 'Isar',
+  sqflite: 'sqflite',
+  go_router: 'go_router',
+  auto_route: 'auto_route',
+  dio: 'dio',
+  firebase_core: 'Firebase',
+  firebase_auth: 'Firebase Auth',
+  cloud_firestore: 'Firebase Firestore',
+  firebase_storage: 'Firebase Storage',
+  supabase_flutter: 'Supabase',
+  json_serializable: 'json_serializable',
+  retrofit: 'Retrofit',
+  objectbox: 'ObjectBox',
+  floor: 'Floor',
+  google_sign_in: 'Google Sign-In',
+  sign_in_with_apple: 'Sign in with Apple',
+  revenue_cat: 'RevenueCat',
+  purchases_flutter: 'RevenueCat',
+  geolocator: 'geolocator',
+  sensors_plus: 'sensors_plus',
+  connectivity_plus: 'connectivity_plus',
   flutter_local_notifications: 'flutter_local_notifications',
-  flutter_background_service:  'flutter_background_service',
+  flutter_background_service: 'flutter_background_service',
 };
 
 interface DetectedProject {
@@ -59,7 +59,7 @@ export class ContextService {
     try {
       const wp = this._getWorkspacePath();
       if (fs.existsSync(path.join(wp, '.maestro', 'context.json'))) return true;
-    } catch { }
+    } catch {}
     // Fallback to workspaceState
     return !!this._context.workspaceState.get<ProjectContext>(CONTEXT_KEY);
   }
@@ -72,7 +72,7 @@ export class ContextService {
       if (fs.existsSync(filePath)) {
         return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as ProjectContext;
       }
-    } catch { }
+    } catch {}
     return this._context.workspaceState.get<ProjectContext>(CONTEXT_KEY);
   }
 
@@ -99,7 +99,7 @@ export class ContextService {
       const wp = this._getWorkspacePath();
       const filePath = path.join(wp, '.maestro', 'context.json');
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    } catch { }
+    } catch {}
   }
 
   addCompletedFeature(title: string): void {
@@ -275,10 +275,13 @@ export class ContextService {
           const deps = { ...pkg.dependencies, ...pkg.devDependencies };
           if (deps['vitest']) testCommands.push('npx vitest run');
           else if (deps['jest'] || deps['ts-jest']) testCommands.push('npx jest');
-        } catch { }
+        } catch {}
       }
       for (const ep of ['src/index.ts', 'src/main.ts', 'index.ts', 'app.ts']) {
-        if (fs.existsSync(path.join(workspacePath, ep))) { entryPoint = entryPoint || ep; break; }
+        if (fs.existsSync(path.join(workspacePath, ep))) {
+          entryPoint = entryPoint || ep;
+          break;
+        }
       }
       if (!packageManager) packageManager = this._detectNodePackageManager(workspacePath);
     }
@@ -289,18 +292,26 @@ export class ContextService {
     if (hasPackageJson && !hasTsConfig) {
       projectTypes.push('JavaScript');
       const hasEslint = [
-        '.eslintrc', '.eslintrc.js', '.eslintrc.json',
-        '.eslintrc.yaml', '.eslintrc.yml', 'eslint.config.js', 'eslint.config.mjs',
-      ].some(f => fs.existsSync(path.join(workspacePath, f)));
+        '.eslintrc',
+        '.eslintrc.js',
+        '.eslintrc.json',
+        '.eslintrc.yaml',
+        '.eslintrc.yml',
+        'eslint.config.js',
+        'eslint.config.mjs',
+      ].some((f) => fs.existsSync(path.join(workspacePath, f)));
       if (hasEslint) analyzeCommands.push('npx eslint . --ext .js,.jsx');
       try {
         const pkg = JSON.parse(fs.readFileSync(path.join(workspacePath, 'package.json'), 'utf-8'));
         const deps = { ...pkg.dependencies, ...pkg.devDependencies };
         if (deps['vitest']) testCommands.push('npx vitest run');
         else if (deps['jest']) testCommands.push('npx jest');
-      } catch { }
+      } catch {}
       for (const ep of ['src/index.js', 'src/index.jsx', 'index.js', 'app.js', 'server.js']) {
-        if (fs.existsSync(path.join(workspacePath, ep))) { entryPoint = entryPoint || ep; break; }
+        if (fs.existsSync(path.join(workspacePath, ep))) {
+          entryPoint = entryPoint || ep;
+          break;
+        }
       }
       if (!packageManager) packageManager = this._detectNodePackageManager(workspacePath);
     }
@@ -315,7 +326,10 @@ export class ContextService {
       testCommands.push('pytest');
       if (!packageManager) packageManager = 'pip';
       for (const ep of ['main.py', 'app.py', 'src/main.py', 'src/app.py']) {
-        if (fs.existsSync(path.join(workspacePath, ep))) { entryPoint = entryPoint || ep; break; }
+        if (fs.existsSync(path.join(workspacePath, ep))) {
+          entryPoint = entryPoint || ep;
+          break;
+        }
       }
     }
 
@@ -345,7 +359,9 @@ export class ContextService {
     if (nameMatch) result.name = nameMatch[1].trim();
     const descMatch = content.match(/^description:\s*['"]?(.+?)['"]?$/m);
     if (descMatch) result.description = descMatch[1].trim();
-    const depsSection = content.match(/^dependencies:([\s\S]*?)(?=^dev_dependencies:|^flutter:|$)/m);
+    const depsSection = content.match(
+      /^dependencies:([\s\S]*?)(?=^dev_dependencies:|^flutter:|$)/m
+    );
     if (depsSection) {
       const depLines = depsSection[1].match(/^\s{2}(\w+):/gm) || [];
       result.dependencies = depLines.map((l: string) => l.trim().replace(':', ''));
@@ -371,10 +387,10 @@ export class ContextService {
     const entries = fs.readdirSync(libPath);
     const hasFeatures = entries.includes('features');
     const hasCore = entries.includes('core');
-    const hasBloc = techStack.some(t => t.toLowerCase().includes('bloc'));
-    const hasRiverpod = techStack.some(t => t.toLowerCase().includes('riverpod'));
-    const hasGetIt = techStack.some(t => t.toLowerCase().includes('get_it'));
-    const hasInjectable = techStack.some(t => t.toLowerCase().includes('injectable'));
+    const hasBloc = techStack.some((t) => t.toLowerCase().includes('bloc'));
+    const hasRiverpod = techStack.some((t) => t.toLowerCase().includes('riverpod'));
+    const hasGetIt = techStack.some((t) => t.toLowerCase().includes('get_it'));
+    const hasInjectable = techStack.some((t) => t.toLowerCase().includes('injectable'));
     let arch = '';
     if (hasFeatures && hasCore) arch = 'Clean Architecture with feature-first folder structure';
     else if (hasFeatures) arch = 'Feature-first folder structure';
@@ -398,10 +414,10 @@ export class ContextService {
     const libPath = path.join(workspacePath, 'lib');
     if (fs.existsSync(libPath)) {
       const samples: Array<[string, string]> = [
-        ['_bloc.dart',            'BLoC pattern'],
-        ['_state.dart',           'State pattern'],
+        ['_bloc.dart', 'BLoC pattern'],
+        ['_state.dart', 'State pattern'],
         ['_repository_impl.dart', 'Repository implementation'],
-        ['_model.dart',           'Model/entity pattern'],
+        ['_model.dart', 'Model/entity pattern'],
       ];
       for (const [keyword, label] of samples) {
         const file = this._findFileByKeyword(libPath, keyword);
@@ -418,22 +434,25 @@ export class ContextService {
     const featuresPath = path.join(workspacePath, 'lib', 'features');
     if (!fs.existsSync(featuresPath)) return [];
     try {
-      return fs.readdirSync(featuresPath, { withFileTypes: true })
-        .filter(e => e.isDirectory())
-        .map(e => e.name.replace(/_/g, ' '));
-    } catch { return []; }
+      return fs
+        .readdirSync(featuresPath, { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name.replace(/_/g, ' '));
+    } catch {
+      return [];
+    }
   }
 
   private _buildKeyFilesMap(workspacePath: string): Record<string, string> {
     const map: Record<string, string> = {};
     const checks: [string, string][] = [
-      ['lib/main.dart',                    'App entry point'],
-      ['lib/injection.config.dart',        'DI configuration (generated)'],
-      ['lib/core/di/injection.dart',       'DI setup'],
+      ['lib/main.dart', 'App entry point'],
+      ['lib/injection.config.dart', 'DI configuration (generated)'],
+      ['lib/core/di/injection.dart', 'DI setup'],
       ['lib/core/network/dio_client.dart', 'HTTP client'],
-      ['lib/core/router/app_router.dart',  'Navigation/routing'],
-      ['lib/core/theme/app_theme.dart',    'App theme'],
-      ['CLAUDE.md',                        'Project conventions for AI'],
+      ['lib/core/router/app_router.dart', 'Navigation/routing'],
+      ['lib/core/theme/app_theme.dart', 'App theme'],
+      ['CLAUDE.md', 'Project conventions for AI'],
     ];
     for (const [relPath, purpose] of checks) {
       if (fs.existsSync(path.join(workspacePath, relPath))) map[relPath] = purpose;
@@ -450,7 +469,7 @@ export class ContextService {
   }
 
   private _extractPurpose(content: string): string {
-    const lines = content.split('\n').filter(l => l.trim().length > 20);
+    const lines = content.split('\n').filter((l) => l.trim().length > 20);
     return lines.slice(0, 3).join(' ').slice(0, 200) || 'Flutter app';
   }
 
@@ -474,7 +493,8 @@ export class ContextService {
   private _extractArchitectureFromText(content: string): string {
     const lower = content.toLowerCase();
     if (lower.includes('clean architecture')) return 'Clean Architecture';
-    if (lower.includes('feature-first') || lower.includes('feature first')) return 'Feature-first architecture';
+    if (lower.includes('feature-first') || lower.includes('feature first'))
+      return 'Feature-first architecture';
     if (lower.includes('mvvm')) return 'MVVM';
     if (lower.includes('mvc')) return 'MVC';
     return 'Standard architecture';
@@ -505,13 +525,18 @@ export class ContextService {
         return a.name.localeCompare(b.name);
       });
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === 'generated' || entry.name === 'node_modules') continue;
+        if (
+          entry.name.startsWith('.') ||
+          entry.name === 'generated' ||
+          entry.name === 'node_modules'
+        )
+          continue;
         result += `${indent}${entry.isDirectory() ? '📁' : '📄'} ${entry.name}\n`;
         if (entry.isDirectory()) {
           result += this._buildFolderTree(path.join(dirPath, entry.name), depth + 1, maxDepth);
         }
       }
-    } catch { }
+    } catch {}
     return result;
   }
 
@@ -526,7 +551,7 @@ export class ContextService {
           if (found) return found;
         }
       }
-    } catch { }
+    } catch {}
     return null;
   }
 

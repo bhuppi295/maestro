@@ -38,13 +38,15 @@ export default function TicketCardView({
   const [showChangesInput, setShowChangesInput] = useState(false);
 
   const blockers = ticket.dependsOn
-    .map(depId => allTickets.find(t => t.id === depId))
+    .map((depId) => allTickets.find((t) => t.id === depId))
     .filter((dep): dep is Ticket => !!dep && dep.status !== 'done');
   const isBlocked = ticket.status === 'todo' && blockers.length > 0;
   const progress = progressById[ticket.id];
 
   return (
-    <div className={`ticket-card ticket-card--${ticket.status} ${isLast ? 'ticket-card--last' : ''} ${isBlocked ? 'ticket-card--blocked' : ''}`}>
+    <div
+      className={`ticket-card ticket-card--${ticket.status} ${isLast ? 'ticket-card--last' : ''} ${isBlocked ? 'ticket-card--blocked' : ''}`}
+    >
       <div className="ticket-card__connector">
         <div className="ticket-card__connector-line" />
         <div className="ticket-card__connector-dot" />
@@ -63,14 +65,28 @@ export default function TicketCardView({
                     e.stopPropagation();
                     vscode.postMessage({ type: 'DELETE_TICKET', ticketId: ticket.id });
                   }}
-                ><Icon name="trash" /></button>
+                >
+                  <Icon name="trash" />
+                </button>
               )}
-              <Icon name={expanded ? "chevron-up" : "chevron-down"} className="ticket-card__chevron" />
+              <Icon
+                name={expanded ? 'chevron-up' : 'chevron-down'}
+                className="ticket-card__chevron"
+              />
             </div>
           </div>
           <div className="ticket-card__badges">
             <StatusBadge status={ticket.status} />
-            {isBlocked && <span className="badge badge--blocked"><Icon name="lock" /> Blocked</span>}
+            {ticket.priority === 'high' && (
+              <span className="badge badge--priority">
+                <span className="badge__dot" aria-hidden="true" /> High
+              </span>
+            )}
+            {isBlocked && (
+              <span className="badge badge--blocked">
+                <Icon name="lock" /> Blocked
+              </span>
+            )}
           </div>
         </div>
 
@@ -80,8 +96,14 @@ export default function TicketCardView({
           <div className="ticket-card__body">
             {isBlocked && (
               <div className="ticket-card__blocked-warning">
-                <span><Icon name="lock" /> Complete first:</span>
-                <ul>{blockers.map(b => <li key={b.id}>{b.title}</li>)}</ul>
+                <span>
+                  <Icon name="lock" /> Complete first:
+                </span>
+                <ul>
+                  {blockers.map((b) => (
+                    <li key={b.id}>{b.title}</li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -90,49 +112,85 @@ export default function TicketCardView({
             {ticket.implementationPlan && (
               <section className="ticket-card__section">
                 <div className="ticket-card__section-header">
-                  <h4>Implementation Plan</h4>
+                  <h4>
+                    <Icon name="lightbulb" /> Plan
+                  </h4>
                   <div className="ticket-card__plan-actions">
-                    <button className="btn-icon" title="Copy plan"
-                      onClick={() => navigator.clipboard.writeText(ticket.implementationPlan!)}><Icon name="copy" /></button>
-                    <button className="btn-icon" title="Save plan"
-                      onClick={() => vscode.postMessage({
-                        type: 'SAVE_PLAN', ticketId: ticket.id,
-                        ticketTitle: ticket.title, content: ticket.implementationPlan!,
-                      })}><Icon name="save" /></button>
+                    <button
+                      className="btn-icon"
+                      title="Copy plan"
+                      onClick={() => navigator.clipboard.writeText(ticket.implementationPlan!)}
+                    >
+                      <Icon name="copy" />
+                    </button>
+                    <button
+                      className="btn-icon"
+                      title="Save plan"
+                      onClick={() =>
+                        vscode.postMessage({
+                          type: 'SAVE_PLAN',
+                          ticketId: ticket.id,
+                          ticketTitle: ticket.title,
+                          content: ticket.implementationPlan!,
+                        })
+                      }
+                    >
+                      <Icon name="save" />
+                    </button>
                   </div>
                 </div>
-                <div className="ticket-card__markdown"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(ticket.implementationPlan) }} />
+                <div
+                  className="ticket-card__markdown"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(ticket.implementationPlan) }}
+                />
               </section>
             )}
 
             {ticket.acceptanceCriteria && ticket.acceptanceCriteria.length > 0 && (
               <section className="ticket-card__section">
-                <h4>Acceptance Criteria</h4>
-                <ul>{ticket.acceptanceCriteria.map((c, i) => <li key={i}>{c}</li>)}</ul>
+                <h4>
+                  <Icon name="checklist" /> Acceptance
+                </h4>
+                <ul>
+                  {ticket.acceptanceCriteria.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
               </section>
             )}
 
             {ticket.affectedFiles && ticket.affectedFiles.length > 0 && (
               <section className="ticket-card__section">
-                <h4>Affected Files</h4>
+                <h4>
+                  <Icon name="files" /> Files · {ticket.affectedFiles.length}
+                </h4>
                 <ul className="ticket-card__files">
-                  {ticket.affectedFiles.map((f, i) => <li key={i} className="ticket-card__file">{f}</li>)}
+                  {ticket.affectedFiles.map((f, i) => (
+                    <li key={i} className="ticket-card__file">
+                      {f}
+                    </li>
+                  ))}
                 </ul>
               </section>
             )}
 
             {ticket.reviewerFeedback.length > 0 && (
               <section className="ticket-card__section">
-                <h4>Feedback History</h4>
+                <h4>
+                  <Icon name="comment" /> Feedback
+                </h4>
                 {ticket.reviewerFeedback.map((f, i) => (
-                  <p key={i} className="ticket-card__feedback">Attempt {i + 1}: {f}</p>
+                  <p key={i} className="ticket-card__feedback">
+                    Attempt {i + 1}: {f}
+                  </p>
                 ))}
               </section>
             )}
 
             {ticket.branchName && (
-              <p className="ticket-card__branch">Branch: <code>{ticket.branchName}</code></p>
+              <p className="ticket-card__branch">
+                <Icon name="git-branch" /> <code>{ticket.branchName}</code>
+              </p>
             )}
 
             {/* Actions */}
@@ -144,8 +202,10 @@ export default function TicketCardView({
               )}
 
               {ticket.status === 'in_progress' && (
-                <button className="btn btn--stop"
-                  onClick={() => vscode.postMessage({ type: 'STOP_TASK', ticketId: ticket.id })}>
+                <button
+                  className="btn btn--stop"
+                  onClick={() => vscode.postMessage({ type: 'STOP_TASK', ticketId: ticket.id })}
+                >
                   <Icon name="debug-stop" /> Stop
                 </button>
               )}
@@ -156,19 +216,32 @@ export default function TicketCardView({
                     <Icon name="check" /> Approve Plan
                   </button>
                   {!showChangesInput ? (
-                    <button className="btn btn--secondary" onClick={() => setShowChangesInput(true)}>
+                    <button
+                      className="btn btn--secondary"
+                      onClick={() => setShowChangesInput(true)}
+                    >
                       <Icon name="edit" /> Request Changes
                     </button>
                   ) : (
                     <div className="ticket-card__input-group">
-                      <textarea placeholder="What should be changed?" value={feedback}
-                        onChange={(e) => setFeedback(e.target.value)} rows={2} />
-                      <button className="btn btn--warning" onClick={() => {
-                        if (feedback.trim()) {
-                          onRequestPlanChanges(ticket.id, feedback);
-                          setFeedback(''); setShowChangesInput(false);
-                        }
-                      }}>Send Feedback</button>
+                      <textarea
+                        placeholder="What should be changed?"
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        rows={2}
+                      />
+                      <button
+                        className="btn btn--warning"
+                        onClick={() => {
+                          if (feedback.trim()) {
+                            onRequestPlanChanges(ticket.id, feedback);
+                            setFeedback('');
+                            setShowChangesInput(false);
+                          }
+                        }}
+                      >
+                        Send Feedback
+                      </button>
                     </div>
                   )}
                 </>
@@ -185,14 +258,24 @@ export default function TicketCardView({
                     </button>
                   ) : (
                     <div className="ticket-card__input-group">
-                      <textarea placeholder="What's wrong? (required)" value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)} rows={2} />
-                      <button className="btn btn--danger" onClick={() => {
-                        if (rejectReason.trim()) {
-                          onRejectTest(ticket.id, rejectReason);
-                          setRejectReason(''); setShowRejectInput(false);
-                        }
-                      }}>Submit Rejection</button>
+                      <textarea
+                        placeholder="What's wrong? (required)"
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        rows={2}
+                      />
+                      <button
+                        className="btn btn--danger"
+                        onClick={() => {
+                          if (rejectReason.trim()) {
+                            onRejectTest(ticket.id, rejectReason);
+                            setRejectReason('');
+                            setShowRejectInput(false);
+                          }
+                        }}
+                      >
+                        Submit Rejection
+                      </button>
                     </div>
                   )}
                 </>
@@ -200,8 +283,12 @@ export default function TicketCardView({
 
               {ticket.status === 'failed' && (
                 <div className="ticket-card__actions">
-                  <button className="btn btn--primary"
-                    onClick={() => vscode.postMessage({ type: 'RETRY_TICKET', ticketId: ticket.id })}>
+                  <button
+                    className="btn btn--primary"
+                    onClick={() =>
+                      vscode.postMessage({ type: 'RETRY_TICKET', ticketId: ticket.id })
+                    }
+                  >
                     <Icon name="refresh" /> Retry with AI
                   </button>
                   <button className="btn btn--secondary" onClick={() => onUnblockManual(ticket.id)}>
