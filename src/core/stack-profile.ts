@@ -34,9 +34,14 @@ const FLUTTER: StackProfile = {
   sourceRoots: ['lib'],
   featureRoot: 'features',
   priorityFilePatterns: [
-    '_bloc.dart', '_state.dart', '_event.dart',
-    '_cubit.dart', '_screen.dart', '_repository.dart',
-    '_repository_impl.dart', '_page.dart',
+    '_bloc.dart',
+    '_state.dart',
+    '_event.dart',
+    '_cubit.dart',
+    '_screen.dart',
+    '_repository.dart',
+    '_repository_impl.dart',
+    '_page.dart',
   ],
   conventionHints: 'BLoC/Cubit, clean architecture layers, GetIt, Freezed',
   specialistHint: '"ui" for widget/screen work, "logic" for BLoC/repository/data layer',
@@ -61,8 +66,13 @@ const TYPESCRIPT: StackProfile = {
   sourceRoots: ['src', 'app', 'lib'],
   featureRoot: 'features',
   priorityFilePatterns: [
-    '.service.ts', '.controller.ts', '.store.ts',
-    '.hook.ts', '.context.tsx', '.component.tsx', '.tsx',
+    '.service.ts',
+    '.controller.ts',
+    '.store.ts',
+    '.hook.ts',
+    '.context.tsx',
+    '.component.tsx',
+    '.tsx',
   ],
   conventionHints: 'module boundaries, typed interfaces, existing state-management choice',
   specialistHint: '"ui" for component/view work, "logic" for services/stores/data access',
@@ -76,8 +86,12 @@ const JAVASCRIPT: StackProfile = {
   sourceExtensions: ['.js', '.jsx', '.mjs'],
   ignoredSuffixes: ['.min.js', '.bundle.js'],
   priorityFilePatterns: [
-    '.service.js', '.controller.js', '.store.js',
-    '.hook.js', '.component.jsx', '.jsx',
+    '.service.js',
+    '.controller.js',
+    '.store.js',
+    '.hook.js',
+    '.component.jsx',
+    '.jsx',
   ],
   examplePaths: ['src/features/...', 'src/services/...'],
 };
@@ -89,8 +103,12 @@ const PYTHON: StackProfile = {
   ignoredSuffixes: ['_pb2.py'],
   sourceRoots: ['src', 'app'],
   priorityFilePatterns: [
-    '_service.py', '_repository.py', '_model.py',
-    'views.py', 'models.py', 'routes.py',
+    '_service.py',
+    '_repository.py',
+    '_model.py',
+    'views.py',
+    'models.py',
+    'routes.py',
   ],
   conventionHints: 'module/package layout, type hints, existing framework idioms',
   specialistHint: '"ui" only for template/view layers, "logic" for services/models/data access',
@@ -118,7 +136,7 @@ const PROFILES: StackProfile[] = [FLUTTER, DART, TYPESCRIPT, JAVASCRIPT, PYTHON]
  */
 export function resolveStackProfile(ctx: ProjectContext): StackProfile {
   for (const type of ctx.projectTypes ?? []) {
-    const match = PROFILES.find(p => p.label.toLowerCase() === type.toLowerCase());
+    const match = PROFILES.find((p) => p.label.toLowerCase() === type.toLowerCase());
     if (match) return match;
   }
   return GENERIC;
@@ -127,7 +145,7 @@ export function resolveStackProfile(ctx: ProjectContext): StackProfile {
 /** Profiles for every detected type, so prompts can mention a mixed stack. */
 export function resolveAllStackProfiles(ctx: ProjectContext): StackProfile[] {
   const matches = (ctx.projectTypes ?? [])
-    .map(type => PROFILES.find(p => p.label.toLowerCase() === type.toLowerCase()))
+    .map((type) => PROFILES.find((p) => p.label.toLowerCase() === type.toLowerCase()))
     .filter((p): p is StackProfile => !!p);
   return matches.length > 0 ? matches : [GENERIC];
 }
@@ -137,16 +155,14 @@ export function resolveAllStackProfiles(ctx: ProjectContext): StackProfile[] {
  * Drops the detector's 'Unknown' sentinel so prompts never say "Unknown project".
  */
 export function describeStack(ctx: ProjectContext): string {
-  const named = (ctx.projectTypes ?? []).filter(
-    t => t && t.toLowerCase() !== 'unknown'
-  );
+  const named = (ctx.projectTypes ?? []).filter((t) => t && t.toLowerCase() !== 'unknown');
   return named.length > 0 ? named.join(' + ') : resolveStackProfile(ctx).label;
 }
 
 export function isSourceFile(profile: StackProfile, fileName: string): boolean {
-  if (profile.ignoredSuffixes.some(s => fileName.endsWith(s))) return false;
+  if (profile.ignoredSuffixes.some((s) => fileName.endsWith(s))) return false;
   if (profile.sourceExtensions.length === 0) return false;
-  return profile.sourceExtensions.some(ext => fileName.endsWith(ext));
+  return profile.sourceExtensions.some((ext) => fileName.endsWith(ext));
 }
 
 export { GENERIC as GENERIC_PROFILE };

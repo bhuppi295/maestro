@@ -1,22 +1,11 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import type { PrerequisiteItem, PrerequisitesStatus } from '../types';
+
+export type { PrerequisiteItem, PrerequisitesStatus };
 
 const execFileAsync = promisify(execFile);
 const CHECK_TIMEOUT = 8_000;
-
-export interface PrerequisiteItem {
-  id: string;
-  name: string;
-  installed: boolean;
-  version?: string;
-  installNote: string;
-  installUrl: string;
-}
-
-export interface PrerequisitesStatus {
-  allGood: boolean;
-  items: PrerequisiteItem[];
-}
 
 /** Toolchain required per detected project type. */
 const STACK_TOOLCHAINS: Record<string, ToolchainCheck> = {
@@ -71,22 +60,33 @@ interface ToolchainCheck {
   installUrl: string;
 }
 
+export interface AgentPrerequisite {
+  binary: string;
+  name: string;
+  installNote: string;
+  installUrl: string;
+}
+
 export class PrerequisitesService {
   /**
    * @param projectTypes Detected project types; only their toolchains are
    *   required. Omitted means agent tooling only.
+   * @param agent The active provider's CLI. HTTP-only providers skip this.
    */
-  async check(projectTypes: string[] = []): Promise<PrerequisitesStatus> {
-    const [claude, git] = await Promise.all([
-      this._checkClaude(),
-      this._checkGit(),
-    ]);
+  async check(
+    projectTypes: string[] = [],
+    agent?: AgentPrerequisite | null
+  ): Promise<PrerequisitesStatus> {
+    const checks: Promise<PrerequisiteItem>[] = [this._checkGit()];
+    if (agent) checks.unshift(this._checkAgent(agent));
+
+    const agentAndGit = await Promise.all(checks);
 
     const stackChecks = await Promise.all(
       this._toolchainsFor(projectTypes).map((t) => this._checkToolchain(t))
     );
 
-    const items = [claude, git, ...stackChecks];
+    const items = [...agentAndGit, ...stackChecks];
     return {
       allGood: items.every((i) => i.installed),
       items,
@@ -132,31 +132,29 @@ export class PrerequisitesService {
 
   // ── Individual checks ────────────────────────────────────────
 
-  private async _checkClaude(): Promise<PrerequisiteItem> {
+  private async _checkAgent(agent: AgentPrerequisite): Promise<PrerequisiteItem> {
     try {
-      const { stdout } = await execFileAsync('claude', ['--version'], {
+      const { stdout } = await execFileAsync(agent.binary, ['--version'], {
         timeout: CHECK_TIMEOUT,
       });
       return {
-        id: 'claude',
-        name: 'Claude Code CLI',
+        id: 'agent',
+        name: agent.name,
         installed: true,
         version: stdout.trim().split('\n')[0],
-        installNote: 'Required for all Maestro AI steps. Run `claude login`, or add an API key in Settings.',
-        installUrl: 'https://claude.ai/code',
+        installNote: agent.installNote,
+        installUrl: agent.installUrl,
       };
     } catch {
       return {
-        id: 'claude',
-        name: 'Claude Code CLI',
+        id: 'agent',
+        name: agent.name,
         installed: false,
-        installNote: 'Required for all Maestro AI steps. Run `claude login`, or add an API key in Settings.',
-        installUrl: 'https://claude.ai/code',
+        installNote: agent.installNote,
+        installUrl: agent.installUrl,
       };
     }
   }
-
-
 
   private async _checkGit(): Promise<PrerequisiteItem> {
     try {
@@ -181,5 +179,4 @@ export class PrerequisitesService {
       };
     }
   }
-
 }

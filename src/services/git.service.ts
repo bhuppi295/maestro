@@ -78,10 +78,7 @@ export class GitService {
  * Format: ft/feature-name or fix/feature-name
  * Uses groupTitle (original user task) not ticket title.
  */
-export function makeBranchName(
-  groupTitle: string,
-  branchType: 'ft' | 'fix' = 'ft'
-): string {
+export function makeBranchName(groupTitle: string, branchType: 'ft' | 'fix' = 'ft'): string {
   const slug = groupTitle
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '')
@@ -102,9 +99,7 @@ export function resolveGroupBranch(
   allTickets: { groupId: string; branchName?: string }[]
 ): string {
   // Check if any sibling ticket already has a branch set
-  const existing = allTickets.find(
-    t => t.groupId === groupId && t.branchName
-  );
+  const existing = allTickets.find((t) => t.groupId === groupId && t.branchName);
   if (existing?.branchName) return existing.branchName;
 
   // Create new branch name from group title

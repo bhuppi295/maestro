@@ -1,8 +1,23 @@
-// types/index.ts — All Maestro interfaces
+// types/index.ts — Single source of truth for every shared shape.
+// Both the extension bundle (esbuild) and the webview bundle (vite)
+// import from here. No runtime imports — this file must stay free of
+// `vscode` and node builtins so the webview can bundle it.
 
-import type { MaestroSettings } from '../services/settings.service';
+/** Pluggable agent backends (see #17). */
+export type AgentProviderId =
+  'claude' | 'codex' | 'gemini' | 'opencode' | 'deepseek' | 'glm' | 'custom';
 
-export type { MaestroSettings };
+export interface MaestroSettings {
+  /** Active provider. Empty model/binary/baseUrl fall back to its defaults. */
+  agentProvider: AgentProviderId;
+  agentModel: string; // Model id, or '' for the provider default
+  agentBinaryPath: string; // CLI binary name/path, or '' for default
+  providerBaseUrl: string; // HTTP endpoint override, or '' for default
+  claudeTimeoutMs: number; // Planner/Reviewer timeout in ms
+  implementationTimeoutMs: number; // Implementer timeout — code writing runs longer
+  maxRetries: number; // Max implementation retries
+  branchPrefix: string; // Git branch prefix
+}
 
 export type TicketStatus =
   | 'todo'
@@ -28,7 +43,7 @@ export interface Ticket {
   // Grouping — links ticket back to user's original task
   groupId: string;
   groupTitle: string;
-  groupBranchType: 'ft' | 'fix';  // feature or fix branch prefix
+  groupBranchType: 'ft' | 'fix'; // feature or fix branch prefix
 
   // AI-facing
   implementationPlan?: string;
@@ -94,8 +109,8 @@ export type WebViewMessage =
   | { type: 'RESET_SETTINGS' }
   | { type: 'CHECK_PREREQUISITES' }
   | { type: 'OPEN_URL'; url: string }
-  | { type: 'SET_API_KEY'; apiKey: string }
-  | { type: 'GET_API_KEY_STATUS' }
+  | { type: 'SET_API_KEY'; apiKey: string; provider: AgentProviderId }
+  | { type: 'GET_API_KEY_STATUS'; provider: AgentProviderId }
   | { type: 'OPEN_IN_EDITOR' };
 
 // Extension → WebView
@@ -119,11 +134,7 @@ export interface TicketProgress {
   startedAt: number;
 }
 
-export type TicketPhase =
-  | 'planning'
-  | 'implementing'
-  | 'analyzing'
-  | 'reviewing';
+export type TicketPhase = 'planning' | 'implementing' | 'analyzing' | 'reviewing';
 
 // Prerequisites
 export interface PrerequisiteItem {

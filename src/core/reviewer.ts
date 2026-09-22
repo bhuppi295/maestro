@@ -34,12 +34,10 @@ export class ReviewerAI {
     codeDiff: string,
     workspacePath: string
   ): Promise<ReviewerOutput> {
-
     // Layer 1 — No completion report = auto reject
     if (
       !completionReport ||
-      (completionReport.completed.length === 0 &&
-        completionReport.incomplete.length > 0)
+      (completionReport.completed.length === 0 && completionReport.incomplete.length > 0)
     ) {
       return {
         approved: false,
@@ -93,13 +91,10 @@ export class ReviewerAI {
     analyze: AnalyzeResult,
     diff: string
   ): string {
-    const criteria = (ticket.acceptanceCriteria ?? [])
-      .map((c, i) => `${i + 1}. ${c}`)
-      .join('\n');
+    const criteria = (ticket.acceptanceCriteria ?? []).map((c, i) => `${i + 1}. ${c}`).join('\n');
 
-    const cappedDiff = diff.length > MAX_DIFF_SIZE
-      ? diff.slice(0, MAX_DIFF_SIZE) + '\n... [diff truncated]'
-      : diff;
+    const cappedDiff =
+      diff.length > MAX_DIFF_SIZE ? diff.slice(0, MAX_DIFF_SIZE) + '\n... [diff truncated]' : diff;
 
     const completedList = report.completed.join('\n') || 'None reported';
     const incompleteList = report.incomplete.join('\n') || 'None';

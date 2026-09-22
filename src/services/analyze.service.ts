@@ -17,10 +17,23 @@ export interface AnalyzeResult {
  * Commands run without a shell, and only these binaries are permitted.
  */
 const ALLOWED_BINARIES = new Set([
-  'flutter', 'dart',
-  'npx', 'npm', 'pnpm', 'yarn', 'node', 'tsc', 'eslint',
-  'ruff', 'pylint', 'mypy', 'python', 'python3',
-  'go', 'cargo', 'dotnet',
+  'flutter',
+  'dart',
+  'npx',
+  'npm',
+  'pnpm',
+  'yarn',
+  'node',
+  'tsc',
+  'eslint',
+  'ruff',
+  'pylint',
+  'mypy',
+  'python',
+  'python3',
+  'go',
+  'cargo',
+  'dotnet',
 ]);
 
 /** Shell metacharacters — their presence means the string is not a plain command. */
@@ -90,7 +103,6 @@ export class AnalyzeService {
         // Check for errors in output
         const hasErrors = this._hasErrors(command, output);
         if (hasErrors) allPassed = false;
-
       } catch (err: any) {
         // Non-zero exit = errors found
         const output = ((err.stdout ?? '') + (err.stderr ?? '')).trim();
@@ -147,9 +159,7 @@ export function hasAnalyzeErrors(command: string, output: string): boolean {
  *   `2 issues found. (1 error, 1 warning).`
  */
 function hasFlutterDartAnalyzerErrors(output: string): boolean {
-  const hasDiagnosticError = output
-    .split(/\r?\n/)
-    .some((line) => /^\s*error\s*[•-]/.test(line));
+  const hasDiagnosticError = output.split(/\r?\n/).some((line) => /^\s*error\s*[•-]/.test(line));
   if (hasDiagnosticError) {
     return true;
   }

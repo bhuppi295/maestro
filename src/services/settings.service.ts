@@ -1,20 +1,21 @@
 import * as vscode from 'vscode';
+import type { AgentProviderId, MaestroSettings } from '../types';
+
+export type { MaestroSettings };
 
 const SETTINGS_KEY = 'maestro.settings';
 const API_KEY_SECRET = 'maestro.anthropicApiKey';
 
-export interface MaestroSettings {
-  agentModel: string;           // Claude model alias or full name
-  agentBinaryPath: string;      // Claude CLI binary name or absolute path
-  claudeTimeoutMs: number;      // Planner/Reviewer timeout in ms
-  implementationTimeoutMs: number; // Implementer timeout — code writing runs longer
-  maxRetries: number;           // Max implementation retries
-  branchPrefix: string;         // Git branch prefix
+/** Per-provider secret id. The legacy id stays as Claude's fallback. */
+function keyId(provider: AgentProviderId): string {
+  return `maestro.apiKey.${provider}`;
 }
 
 export const DEFAULT_SETTINGS: MaestroSettings = {
+  agentProvider: 'claude',
   agentModel: 'sonnet',
   agentBinaryPath: 'claude',
+  providerBaseUrl: '',
   claudeTimeoutMs: 3 * 60_000,
   implementationTimeoutMs: 10 * 60_000,
   maxRetries: 3,
@@ -42,18 +43,24 @@ export class SettingsService {
     this._context.globalState.update(SETTINGS_KEY, DEFAULT_SETTINGS);
   }
 
-  // ── API key (OS keychain, never globalState or the workspace) ──
+  // ── API keys (OS keychain, never globalState or the workspace) ──
 
   /** Empty string means no key — the CLI's own login is used instead. */
-  async getApiKey(): Promise<string> {
-    return (await this._context.secrets.get(API_KEY_SECRET)) ?? '';
+  async getApiKey(provider: AgentProviderId = 'claude'): Promise<string> {
+    const key = await this._context.secrets.get(keyId(provider));
+    if (key) return key;
+    // Migrate the pre-provider single key for Claude users.
+    if (provider === 'claude') {
+      return (await this._context.secrets.get(API_KEY_SECRET)) ?? '';
+    }
+    return '';
   }
 
-  async setApiKey(key: string): Promise<void> {
+  async setApiKey(key: string, provider: AgentProviderId = 'claude'): Promise<void> {
     if (key) {
-      await this._context.secrets.store(API_KEY_SECRET, key);
+      await this._context.secrets.store(keyId(provider), key);
     } else {
-      await this._context.secrets.delete(API_KEY_SECRET);
+      await this._context.secrets.delete(keyId(provider));
     }
   }
 }

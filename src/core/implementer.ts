@@ -80,7 +80,9 @@ Now implement the ticket.`;
   private _parseCompletionReport(output: string, ticket: Ticket): CompletionReport {
     const reportMatch = output.match(/MAESTRO_REPORT_START\s*([\s\S]*?)\s*MAESTRO_REPORT_END/);
     if (reportMatch) {
-      try { return JSON.parse(reportMatch[1].trim()) as CompletionReport; } catch { }
+      try {
+        return JSON.parse(reportMatch[1].trim()) as CompletionReport;
+      } catch {}
     }
     return {
       completed: [],

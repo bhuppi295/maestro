@@ -1,5 +1,7 @@
 import type { Ticket, TicketStatus, TicketProgress } from '../types';
 import TicketCardView from './TicketCardView';
+import Logo from './Logo';
+import Icon from './Icon';
 
 interface Props {
   tickets: Ticket[];
@@ -15,32 +17,42 @@ interface Props {
 interface Column {
   id: string;
   title: string;
+  icon: string;
   statuses: TicketStatus[];
   accent: string;
 }
 
 /** Pipeline stages, collapsed into the columns a user actually reasons about. */
 const COLUMNS: Column[] = [
-  { id: 'backlog', title: 'Backlog', statuses: ['todo'], accent: 'var(--mo-status-todo)' },
+  {
+    id: 'backlog',
+    title: 'Backlog',
+    icon: 'circle-large-outline',
+    statuses: ['todo'],
+    accent: 'var(--mo-status-todo)',
+  },
   {
     id: 'planning',
     title: 'Planning',
+    icon: 'lightbulb',
     statuses: ['planning', 'plan_review'],
     accent: 'var(--mo-status-planning)',
   },
   {
     id: 'building',
     title: 'Building',
+    icon: 'zap',
     statuses: ['in_progress', 'in_review'],
     accent: 'var(--mo-status-progress)',
   },
   {
     id: 'review',
     title: 'Your Review',
+    icon: 'eye',
     statuses: ['ready_to_test', 'failed'],
     accent: 'var(--mo-status-ready)',
   },
-  { id: 'done', title: 'Done', statuses: ['done'], accent: 'var(--mo-status-done)' },
+  { id: 'done', title: 'Done', icon: 'check', statuses: ['done'], accent: 'var(--mo-status-done)' },
 ];
 
 const EXAMPLES = [
@@ -53,16 +65,21 @@ const EXAMPLES = [
 function BoardZeroState() {
   return (
     <div className="zero">
-      <div className="zero__glyph" aria-hidden="true">🎼</div>
+      <div className="zero__glyph" aria-hidden="true">
+        <Logo size={48} />
+      </div>
+      <p className="zero__kicker">Agent pipeline</p>
       <h2 className="zero__title">Describe what you want built</h2>
       <p className="zero__sub">
-        Maestro breaks it into tickets, plans each one, writes the code, and
-        reviews its own work — moving them across this board as it goes.
+        Maestro slices it into tickets, plans each one, writes the code, and reviews its own work —
+        gliding across this board as it goes.
       </p>
 
       <ul className="zero__examples">
-        {EXAMPLES.map(e => (
-          <li key={e} className="zero__example">{e}</li>
+        {EXAMPLES.map((e) => (
+          <li key={e} className="zero__example">
+            {e}
+          </li>
         ))}
       </ul>
 
@@ -83,8 +100,8 @@ export default function TicketBoard({ tickets, ...rest }: Props) {
 
   return (
     <div className="board">
-      {COLUMNS.map(col => {
-        const items = tickets.filter(t => col.statuses.includes(t.status));
+      {COLUMNS.map((col) => {
+        const items = tickets.filter((t) => col.statuses.includes(t.status));
         return (
           <section
             key={col.id}
@@ -93,22 +110,21 @@ export default function TicketBoard({ tickets, ...rest }: Props) {
             aria-label={`${col.title}, ${items.length} ticket(s)`}
           >
             <header className="board__col-head">
-              <span className="board__col-dot" aria-hidden="true" />
+              <span className="board__col-icon" aria-hidden="true">
+                <Icon name={col.icon} />
+              </span>
               <h3 className="board__col-title">{col.title}</h3>
               <span className="board__col-count">{items.length}</span>
             </header>
 
             <div className="board__col-body">
               {items.length === 0 ? (
-                <p className="board__col-empty">Nothing here</p>
+                <div className="board__col-empty">
+                  <Icon name="plus" /> Drop zone
+                </div>
               ) : (
-                items.map(ticket => (
-                  <TicketCardView
-                    key={ticket.id}
-                    ticket={ticket}
-                    allTickets={tickets}
-                    {...rest}
-                  />
+                items.map((ticket) => (
+                  <TicketCardView key={ticket.id} ticket={ticket} allTickets={tickets} {...rest} />
                 ))
               )}
             </div>

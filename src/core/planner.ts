@@ -6,8 +6,16 @@ import { StackProfile, resolveStackProfile, isSourceFile, describeStack } from '
 
 /** Dependency and build directories that never hold useful project source. */
 const SKIP_DIRS = new Set([
-  'node_modules', 'generated', 'build', 'dist', 'out',
-  '.dart_tool', 'vendor', '__pycache__', '.venv', 'venv',
+  'node_modules',
+  'generated',
+  'build',
+  'dist',
+  'out',
+  '.dart_tool',
+  'vendor',
+  '__pycache__',
+  '.venv',
+  'venv',
 ]);
 
 export interface PlannerOutput {
@@ -20,19 +28,19 @@ export interface PlannerOutput {
 
 // Keywords to find relevant files by ticket topic
 const TOPIC_KEYWORDS: Record<string, string[]> = {
-  auth:        ['auth', 'login', 'signup', 'session', 'token'],
-  purchase:    ['iap', 'purchase', 'payment', 'subscription', 'product'],
-  deeplink:    ['deeplink', 'deep_link', 'link', 'universal', 'applink'],
-  share:       ['share', 'sharing'],
-  notification:['notification', 'push', 'fcm', 'firebase_messaging'],
-  profile:     ['profile', 'user', 'account'],
-  cart:        ['cart', 'basket', 'order'],
-  search:      ['search', 'filter', 'query'],
-  onboarding:  ['onboarding', 'intro', 'walkthrough'],
+  auth: ['auth', 'login', 'signup', 'session', 'token'],
+  purchase: ['iap', 'purchase', 'payment', 'subscription', 'product'],
+  deeplink: ['deeplink', 'deep_link', 'link', 'universal', 'applink'],
+  share: ['share', 'sharing'],
+  notification: ['notification', 'push', 'fcm', 'firebase_messaging'],
+  profile: ['profile', 'user', 'account'],
+  cart: ['cart', 'basket', 'order'],
+  search: ['search', 'filter', 'query'],
+  onboarding: ['onboarding', 'intro', 'walkthrough'],
 };
 
 const MAX_FILE_READ = 10_000; // balanced quality + token usage
-const MAX_FILES_TO_READ = 5;  // balanced quality + token usage
+const MAX_FILES_TO_READ = 5; // balanced quality + token usage
 
 export class PlannerAI {
   constructor(private readonly _agent: AgentService) {}
@@ -44,20 +52,16 @@ export class PlannerAI {
     options: { signal?: AbortSignal; timeoutMs?: number } = {}
   ): Promise<PlannerOutput> {
     // 1. Find and read relevant files
-    const relevantFiles = await this._gatherRelevantFiles(
-      ticket,
-      projectContext,
-      workspacePath
-    );
+    const relevantFiles = await this._gatherRelevantFiles(ticket, projectContext, workspacePath);
 
     // 2. Build prompt and call Claude CLI
     const prompt = this._buildPrompt(ticket, projectContext, relevantFiles);
     const { signal, timeoutMs } = options;
-    const output = await this._agent.runForJson<PlannerOutput>(
-      prompt,
-      workspacePath,
-      { effort: 'high', signal, timeoutMs }
-    );
+    const output = await this._agent.runForJson<PlannerOutput>(prompt, workspacePath, {
+      effort: 'high',
+      signal,
+      timeoutMs,
+    });
 
     return output;
   }
@@ -143,9 +147,10 @@ export class PlannerAI {
     const featuresPath = path.join(sourcePath, profile.featureRoot);
     if (!fs.existsSync(featuresPath)) return null;
 
-    const featureDirs = fs.readdirSync(featuresPath, { withFileTypes: true })
-      .filter(e => e.isDirectory())
-      .map(e => e.name);
+    const featureDirs = fs
+      .readdirSync(featuresPath, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
 
     const lower = text.toLowerCase().replace(/_/g, ' ');
 
@@ -155,7 +160,7 @@ export class PlannerAI {
 
     for (const dir of featureDirs) {
       const dirWords = dir.replace(/_/g, ' ').split(' ');
-      const score = dirWords.filter(w => w.length > 2 && lower.includes(w)).length;
+      const score = dirWords.filter((w) => w.length > 2 && lower.includes(w)).length;
       if (score > bestScore) {
         bestScore = score;
         bestMatch = dir;
@@ -183,8 +188,8 @@ export class PlannerAI {
 
     // Prioritise by pattern order
     const sorted = files.sort((a, b) => {
-      const aScore = profile.priorityFilePatterns.findIndex(p => a.endsWith(p));
-      const bScore = profile.priorityFilePatterns.findIndex(p => b.endsWith(p));
+      const aScore = profile.priorityFilePatterns.findIndex((p) => a.endsWith(p));
+      const bScore = profile.priorityFilePatterns.findIndex((p) => b.endsWith(p));
       const aIdx = aScore === -1 ? 99 : aScore;
       const bIdx = bScore === -1 ? 99 : bScore;
       return aIdx - bIdx;
@@ -206,11 +211,15 @@ export class PlannerAI {
         const fullPath = path.join(dirPath, entry.name);
         if (entry.isFile() && isSourceFile(profile, entry.name)) {
           results.push(fullPath);
-        } else if (entry.isDirectory() && !entry.name.startsWith('.') && !SKIP_DIRS.has(entry.name)) {
+        } else if (
+          entry.isDirectory() &&
+          !entry.name.startsWith('.') &&
+          !SKIP_DIRS.has(entry.name)
+        ) {
           results.push(...this._findSourceFiles(fullPath, profile, depth + 1));
         }
       }
-    } catch { }
+    } catch {}
     return results;
   }
 
@@ -259,9 +268,7 @@ export class PlannerAI {
             found.push(fullPath);
           }
         } else if (entry.isDirectory()) {
-          found.push(
-            ...this._findFilesByKeywords(fullPath, keywords, profile, depth + 1)
-          );
+          found.push(...this._findFilesByKeywords(fullPath, keywords, profile, depth + 1));
         }
       }
     } catch {
@@ -326,7 +333,7 @@ RULES:
 Respond with ONLY this JSON, no explanation:
 {
   "implementationPlan": "Step-by-step plan as a detailed string. Use numbered steps.",
-  "affectedFiles": [${profile.examplePaths.map(p => `"${p}"`).join(', ')}],
+  "affectedFiles": [${profile.examplePaths.map((p) => `"${p}"`).join(', ')}],
   "acceptanceCriteria": [
     "Specific testable criterion 1",
     "Specific testable criterion 2"

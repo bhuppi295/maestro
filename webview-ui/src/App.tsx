@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { vscode } from './vscode';
 import Icon from './components/Icon';
+import Logo from './components/Logo';
 import PrerequisitesCheck from './components/PrerequisitesCheck';
 import SetupProject from './components/SetupProject';
 import ProjectContextBanner from './components/ProjectContextBanner';
@@ -8,11 +9,20 @@ import TaskInput from './components/TaskInput';
 import TicketList from './components/TicketList';
 import TicketBoard from './components/TicketBoard';
 import SettingsPanel from './components/SettingsPanel';
-import type { Ticket, ExtensionMessage, ProjectContext, PrerequisitesStatus, MaestroSettings, TicketProgress } from './types';
+import type {
+  Ticket,
+  ExtensionMessage,
+  ProjectContext,
+  PrerequisitesStatus,
+  MaestroSettings,
+  TicketProgress,
+} from './types';
 
 const DEFAULT_SETTINGS: MaestroSettings = {
+  agentProvider: 'claude',
   agentModel: 'sonnet',
   agentBinaryPath: 'claude',
+  providerBaseUrl: '',
   claudeTimeoutMs: 180000,
   implementationTimeoutMs: 600000,
   maxRetries: 3,
@@ -47,7 +57,7 @@ export default function App() {
           setHasApiKey(message.hasKey);
           break;
         case 'TICKET_PROGRESS':
-          setProgressById(prev => {
+          setProgressById((prev) => {
             const next = { ...prev };
             if (message.progress) next[message.ticketId] = message.progress;
             else delete next[message.ticketId];
@@ -63,9 +73,7 @@ export default function App() {
           break;
         case 'TICKET_STATUS_CHANGED':
           setTickets((prev) =>
-            prev.map((t) =>
-              t.id === message.ticketId ? { ...t, status: message.status } : t
-            )
+            prev.map((t) => (t.id === message.ticketId ? { ...t, status: message.status } : t))
           );
           break;
         case 'AI_LOG':
@@ -86,7 +94,11 @@ export default function App() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const activeCount = tickets.filter(t => t.status !== 'done').length;
+  const activeCount = tickets.filter((t) => t.status !== 'done').length;
+  const doneCount = tickets.length - activeCount;
+  const reviewCount = tickets.filter(
+    (t) => t.status === 'plan_review' || t.status === 'ready_to_test' || t.status === 'failed'
+  ).length;
 
   const ticketActions = {
     onDoWithAI: (id: string) => vscode.postMessage({ type: 'DO_WITH_AI', ticketId: id }),
@@ -101,8 +113,29 @@ export default function App() {
 
   const header = (
     <header className="app-header">
-      <Icon name="music" className="app-logo" />
-      <h1 className="app-title">Maestro</h1>
+      <div className="brand">
+        <Logo size={26} />
+        <div className="brand__text">
+          <h1 className="app-title">Maestro</h1>
+          <span className="brand__sub">Agent pipeline</span>
+        </div>
+        <span className="beta-pill">Beta</span>
+      </div>
+      {tickets.length > 0 && (
+        <div className="pipeline-stat" title={`${doneCount} of ${tickets.length} done`}>
+          <span className="pipeline-stat__bar" aria-hidden="true">
+            <span style={{ width: `${Math.round((doneCount / tickets.length) * 100)}%` }} />
+          </span>
+          <span className="pipeline-stat__label">
+            {doneCount}/{tickets.length} done
+          </span>
+          {reviewCount > 0 && (
+            <span className="pipeline-stat__ping" title={`${reviewCount} need(s) your review`}>
+              {reviewCount} need you
+            </span>
+          )}
+        </div>
+      )}
       {activeCount > 0 && (
         <span className="app-header__count" title={`${activeCount} active ticket(s)`}>
           {activeCount}
@@ -113,8 +146,9 @@ export default function App() {
           className={`app-header__btn ${showSettings ? 'app-header__btn--active' : ''}`}
           title="Settings"
           onClick={() => {
-            if (!showSettings) vscode.postMessage({ type: 'GET_API_KEY_STATUS' });
-            setShowSettings(v => !v);
+            if (!showSettings)
+              vscode.postMessage({ type: 'GET_API_KEY_STATUS', provider: settings.agentProvider });
+            setShowSettings((v) => !v);
           }}
         >
           <Icon name="settings-gear" />
@@ -177,21 +211,22 @@ export default function App() {
       {header}
       <div className="app__workspace">
         <aside className="app__aside">
-          <ProjectContextBanner
-            context={projectContext}
-            onReset={() => setProjectContext(null)}
+          <ProjectContextBanner context={projectContext} onReset={() => setProjectContext(null)} />
+          <TaskInput
+            onSubmit={(task: string) => {
+              setLog('');
+              vscode.postMessage({ type: 'SUBMIT_TASK', payload: task });
+            }}
           />
-          <TaskInput onSubmit={(task: string) => {
-            setLog('');
-            vscode.postMessage({ type: 'SUBMIT_TASK', payload: task });
-          }} />
           {log && <p className="app-log">{log}</p>}
         </aside>
 
         <main className="app__main">
-          {isWide
-            ? <TicketBoard tickets={tickets} progressById={progressById} {...ticketActions} />
-            : <TicketList tickets={tickets} progressById={progressById} {...ticketActions} />}
+          {isWide ? (
+            <TicketBoard tickets={tickets} progressById={progressById} {...ticketActions} />
+          ) : (
+            <TicketList tickets={tickets} progressById={progressById} {...ticketActions} />
+          )}
         </main>
       </div>
     </div>
