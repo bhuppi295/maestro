@@ -25,7 +25,7 @@ const PROVIDER_MODELS: Record<AgentProviderId, string[]> = {
   codex: ['gpt-5', 'gpt-5-mini', 'o3'],
   gemini: ['gemini-2.5-pro', 'gemini-2.5-flash'],
   opencode: [
-    'opencode/muse-spark-1-3-contributor-free',
+    'opencode/muse-spark-1.3-contributor-free',
     'anthropic/claude-sonnet-4-5',
     'openai/gpt-5',
     'google/gemini-2.5-pro',

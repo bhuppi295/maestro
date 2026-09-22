@@ -11,7 +11,8 @@ import type { AgentProviderId } from '../types';
 
 export type { AgentEffort, AgentOptions };
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
+const RETRY_DELAYS_MS = [2000, 4000];
 const DEFAULT_TIMEOUT_MS = 3 * 60_000;
 
 export interface AgentConfig {
@@ -103,7 +104,10 @@ export class AgentService {
         lastError = err as Error;
         if (lastError.message === 'Cancelled by user') throw err;
         if (isMissingBinary(err)) throw new Error(missingBinaryMessage(cfg));
-        await new Promise((r) => setTimeout(r, 1000));
+        // Back off before retrying — transient provider blips (Zen 500s,
+        // rate limits) often clear within seconds.
+        const delay = RETRY_DELAYS_MS[attempt - 1] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
 
@@ -210,7 +214,8 @@ export class AgentService {
       } catch (err) {
         lastError = err as Error;
         if (lastError.message === 'Cancelled by user') throw err;
-        await new Promise((r) => setTimeout(r, 1000));
+        const delay = RETRY_DELAYS_MS[attempt - 1] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
 
@@ -351,16 +356,33 @@ function missingBinaryMessage(cfg: EffectiveAgentConfig): string {
 }
 
 /** Auth failures are the most common empty-output cause; name them directly. */
-function describeEmptyOutput(stderr: string, cfg: EffectiveAgentConfig): string {
-  const detail = stderr.slice(0, 300);
+export function describeEmptyOutput(stderr: string, cfg: EffectiveAgentConfig): string {
+  const clean = stripAnsi(stderr);
+  const detail = clean.slice(0, 300);
   const label = cfg.provider.label;
-  if (/api[- ]?key|unauthor|authentic|forbidden|401|403/i.test(stderr)) {
+  if (/api[- ]?key|unauthor|authentic|forbidden|401|403/i.test(clean)) {
     return (
       `${label} rejected the credentials. Add an API key in Maestro settings. ` +
       `Details: ${detail}`
     );
   }
+  if (/rate.?limit|429|too many requests/i.test(clean)) {
+    return (
+      `${label} rate-limited the request. Wait a minute and retry, or pick a ` +
+      `fallback model in Settings. Details: ${detail}`
+    );
+  }
+  if (/server error|5\d\d|overloaded|try again|unexpected.*error/i.test(clean)) {
+    return (
+      `${label} hit a transient provider-side error (already retried). Retry the ` +
+      `ticket, or switch to a fallback model in Settings. Details: ${detail}`
+    );
+  }
   return `${label} produced no output. stderr: ${detail}`;
+}
+
+export function stripAnsi(text: string): string {
+  return text.replace(/\[[0-9;]*m/g, '');
 }
 
 export function extractJson<T>(output: string): T {
