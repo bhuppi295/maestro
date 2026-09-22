@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { vscode } from './vscode';
+import Icon from './components/Icon';
 import PrerequisitesCheck from './components/PrerequisitesCheck';
 import SetupProject from './components/SetupProject';
 import ProjectContextBanner from './components/ProjectContextBanner';
 import TaskInput from './components/TaskInput';
 import TicketList from './components/TicketList';
+import TicketBoard from './components/TicketBoard';
 import SettingsPanel from './components/SettingsPanel';
 import type { Ticket, ExtensionMessage, ProjectContext, PrerequisitesStatus, MaestroSettings, TicketProgress } from './types';
 
@@ -86,9 +88,20 @@ export default function App() {
 
   const activeCount = tickets.filter(t => t.status !== 'done').length;
 
+  const ticketActions = {
+    onDoWithAI: (id: string) => vscode.postMessage({ type: 'DO_WITH_AI', ticketId: id }),
+    onApprovePlan: (id: string) => vscode.postMessage({ type: 'APPROVE_PLAN', ticketId: id }),
+    onRequestPlanChanges: (id: string, feedback: string) =>
+      vscode.postMessage({ type: 'REQUEST_PLAN_CHANGES', ticketId: id, feedback }),
+    onApproveTest: (id: string) => vscode.postMessage({ type: 'APPROVE_TEST', ticketId: id }),
+    onRejectTest: (id: string, reason: string) =>
+      vscode.postMessage({ type: 'REJECT_TEST', ticketId: id, reason }),
+    onUnblockManual: (id: string) => vscode.postMessage({ type: 'UNBLOCK_MANUAL', ticketId: id }),
+  };
+
   const header = (
     <header className="app-header">
-      <span className="app-logo">🎼</span>
+      <Icon name="music" className="app-logo" />
       <h1 className="app-title">Maestro</h1>
       {activeCount > 0 && (
         <span className="app-header__count" title={`${activeCount} active ticket(s)`}>
@@ -96,15 +109,6 @@ export default function App() {
         </span>
       )}
       <div className="app-header__actions">
-        {!isWide && (
-          <button
-            className="app-header__btn"
-            title="Open Maestro in a full editor tab"
-            onClick={() => vscode.postMessage({ type: 'OPEN_IN_EDITOR' })}
-          >
-            ⛶
-          </button>
-        )}
         <button
           className={`app-header__btn ${showSettings ? 'app-header__btn--active' : ''}`}
           title="Settings"
@@ -113,7 +117,7 @@ export default function App() {
             setShowSettings(v => !v);
           }}
         >
-          ⚙
+          <Icon name="settings-gear" />
         </button>
       </div>
     </header>
@@ -138,7 +142,7 @@ export default function App() {
       <>
         {header}
         <div className="setup__loading" style={{ padding: '32px' }}>
-          <div className="setup__spinner">⟳</div>
+          <Icon name="loading" spin className="setup__spinner" />
           <p className="setup__loading-msg">Checking prerequisites...</p>
         </div>
       </>
@@ -164,8 +168,12 @@ export default function App() {
     );
   }
 
+  // With no tickets the board has nothing to show, so the composer becomes the
+  // page rather than a column beside an empty grid.
+  const isFirstRun = isWide && tickets.length === 0;
+
   return (
-    <div className={`app ${isWide ? 'app--wide' : ''}`}>
+    <div className={`app ${isWide ? 'app--wide' : ''} ${isFirstRun ? 'app--firstrun' : ''}`}>
       {header}
       <div className="app__workspace">
         <aside className="app__aside">
@@ -181,22 +189,9 @@ export default function App() {
         </aside>
 
         <main className="app__main">
-          <TicketList
-            tickets={tickets}
-            progressById={progressById}
-            onDoWithAI={(id: string) =>
-              vscode.postMessage({ type: 'DO_WITH_AI', ticketId: id })}
-            onApprovePlan={(id: string) =>
-              vscode.postMessage({ type: 'APPROVE_PLAN', ticketId: id })}
-            onRequestPlanChanges={(id: string, feedback: string) =>
-              vscode.postMessage({ type: 'REQUEST_PLAN_CHANGES', ticketId: id, feedback })}
-            onApproveTest={(id: string) =>
-              vscode.postMessage({ type: 'APPROVE_TEST', ticketId: id })}
-            onRejectTest={(id: string, reason: string) =>
-              vscode.postMessage({ type: 'REJECT_TEST', ticketId: id, reason })}
-            onUnblockManual={(id: string) =>
-              vscode.postMessage({ type: 'UNBLOCK_MANUAL', ticketId: id })}
-          />
+          {isWide
+            ? <TicketBoard tickets={tickets} progressById={progressById} {...ticketActions} />
+            : <TicketList tickets={tickets} progressById={progressById} {...ticketActions} />}
         </main>
       </div>
     </div>

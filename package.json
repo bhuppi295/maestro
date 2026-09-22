@@ -56,6 +56,13 @@
           "group": "navigation@1"
         }
       ],
+      "editor/title": [
+        {
+          "command": "maestro.openInEditor",
+          "when": "activeWebviewPanelId != 'maestro.editorPanel'",
+          "group": "navigation"
+        }
+      ],
       "commandPalette": [
         {
           "command": "maestro.openInEditor"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Icon from './Icon';
 import { vscode } from '../vscode';
 
 export default function SetupProject() {
@@ -21,7 +22,7 @@ export default function SetupProject() {
     return (
       <div className="setup">
         <div className="setup__loading">
-          <div className="setup__spinner">⟳</div>
+          <Icon name="loading" spin className="setup__spinner" />
           <p className="setup__loading-msg">{loadingMsg}</p>
           <p className="setup__hint">Scanning your project files...</p>
         </div>
@@ -31,7 +32,7 @@ export default function SetupProject() {
 
   return (
     <div className="setup">
-      <div className="setup__icon">🎼</div>
+      <Icon name="music" className="setup__icon" />
       <h2 className="setup__title">Welcome to Maestro</h2>
       <p className="setup__subtitle">
         First, let Maestro understand your project so the AI agent can work correctly.
@@ -40,7 +41,7 @@ export default function SetupProject() {
       <div className="setup__options">
         {/* Existing project */}
         <button className="setup__option" onClick={handleScanWorkspace}>
-          <span className="setup__option-icon">📁</span>
+          <Icon name="folder-opened" className="setup__option-icon" />
           <div className="setup__option-text">
             <strong>Existing Project</strong>
             <span>Scan current workspace folder</span>
@@ -49,7 +50,7 @@ export default function SetupProject() {
 
         {/* New project */}
         <button className="setup__option" onClick={handleLoadFile}>
-          <span className="setup__option-icon">📄</span>
+          <Icon name="new-file" className="setup__option-icon" />
           <div className="setup__option-text">
             <strong>New Project</strong>
             <span>Load from PRD or MD file</span>

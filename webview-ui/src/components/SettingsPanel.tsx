@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Icon from './Icon';
 import { vscode } from '../vscode';
 import type { MaestroSettings } from '../types';
 
@@ -42,8 +43,8 @@ export default function SettingsPanel({ settings, hasApiKey, onClose }: Props) {
   return (
     <div className="settings">
       <div className="settings__header">
-        <h2 className="settings__title">⚙ Settings</h2>
-        <button className="settings__close" onClick={onClose}>✕</button>
+        <h2 className="settings__title"><Icon name="settings-gear" /> Settings</h2>
+        <button className="settings__close" onClick={onClose}><Icon name="close" /></button>
       </div>
 
       <div className="settings__body">
@@ -195,7 +196,7 @@ export default function SettingsPanel({ settings, hasApiKey, onClose }: Props) {
           Reset to defaults
         </button>
         <button className="btn btn--primary" onClick={handleSave}>
-          {saved ? '✅ Saved!' : 'Save Settings'}
+          {saved ? (<><Icon name="check" /> Saved!</>) : 'Save Settings'}
         </button>
       </div>
     </div>
